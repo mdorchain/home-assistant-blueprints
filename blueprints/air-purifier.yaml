@@ -1,0 +1,92 @@
+blueprint:
+  name: 🌫️ Air Purifier Control (1.1.0)
+  description: >
+    Turns a fan on or off based on PM2.5 levels from a sensor.
+    Includes hysteresis (separate ON/OFF thresholds) to avoid toggling.
+  domain: automation
+  source_url: https://github.com/YourName/home-assistant-blueprints/blob/main/blueprints/air_purifier.yaml
+
+# -------------------------------------------------------------------
+# Blueprint Metadata
+# Version:      1.1.0
+# Last Updated: 2025-08-28
+# Author:       YourName
+# Source:       https://github.com/YourName/home-assistant-blueprints/
+#
+# Changelog:
+#   1.1.0 (2025-08-28) - Added hysteresis with ON/OFF thresholds
+#   1.0.0 (2025-08-27) - Initial release with single threshold
+#
+# Notes:
+# - Home Assistant will notify users if an update is available
+#   when imported via raw GitHub URL.
+# - Keep input keys stable to avoid breaking existing automations.
+# -------------------------------------------------------------------
+
+input:
+  input_pm25_sensor:
+    name: PM2.5 Sensor
+    selector:
+      entity:
+        domain: sensor
+  input_air_purifier:
+    name: Air Purifier Fan
+    selector:
+      entity:
+        domain: fan
+  input_threshold_on:
+    name: PM2.5 ON Threshold
+    description: Value above which the fan turns ON
+    default: 25
+    selector:
+      number:
+        min: 0
+        max: 500
+        unit_of_measurement: µg/m³
+        mode: slider
+  input_threshold_off:
+    name: PM2.5 OFF Threshold
+    description: Value below which the fan turns OFF
+    default: 15
+    selector:
+      number:
+        min: 0
+        max: 500
+        unit_of_measurement: µg/m³
+        mode: slider
+  time_period:
+    name: Trigger Duration
+    description: How long the PM2.5 value must remain stable before triggering
+    default: "00:05:00"
+    selector:
+      duration:
+
+variables:
+  threshold_on: !input input_threshold_on
+  threshold_off: !input input_threshold_off
+
+trigger:
+  - platform: state
+    entity_id: !input input_pm25_sensor
+    for: !input time_period
+
+action:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ trigger.to_state.state | float > threshold_on }}
+        sequence:
+          - service: homeassistant.turn_on
+            target:
+              entity_id: !input input_air_purifier
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ trigger.to_state.state | float < threshold_off }}
+        sequence:
+          - service: homeassistant.turn_off
+            target:
+              entity_id: !input input_air_purifier
+
+mode: restart
