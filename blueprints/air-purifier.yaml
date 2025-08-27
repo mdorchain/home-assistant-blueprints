@@ -24,17 +24,19 @@ blueprint:
   domain: automation
   source_url: https://github.com/mdorchain/home-assistant-blueprints/blob/main/blueprints/air-purifier.yaml
 
-  input:
-    input_pm25_sensor:
-      name: PM2.5 Sensor
-      selector:
-        entity:
-          domain: sensor
+  input:  
     input_air_purifier:
       name: Air Purifier Fan
       selector:
         entity:
           domain: fan
+
+    input_pm25_sensor:
+      name: PM2.5 Sensor
+      selector:
+        entity:
+          domain: sensor
+
     input_threshold_on:
       name: PM2.5 ON Threshold
       description: Value above which the fan turns ON
@@ -45,6 +47,7 @@ blueprint:
           max: 500
           unit_of_measurement: µg/m³
           mode: slider
+
     input_threshold_off:
       name: PM2.5 OFF Threshold
       description: Value below which the fan turns OFF
@@ -55,6 +58,7 @@ blueprint:
           max: 500
           unit_of_measurement: µg/m³
           mode: slider
+          
     time_period:
       name: Trigger Duration
       description: How long the PM2.5 value must remain stable before triggering
@@ -76,18 +80,18 @@ action:
       - conditions:
           - condition: template
             value_template: >
-              {{ trigger.to_state.state | float > threshold_on }}
+              {{ trigger.to_state.state | is_number and trigger.to_state.state | float > threshold_on }}
         sequence:
-          - service: homeassistant.turn_on
+          - service: fan.turn_on
             target:
               entity_id: !input input_air_purifier
       - conditions:
           - condition: template
             value_template: >
-              {{ trigger.to_state.state | float < threshold_off }}
+              {{ trigger.to_state.state | is_number and trigger.to_state.state | float < threshold_off }}
         sequence:
-          - service: homeassistant.turn_off
+          - service: fan.turn_off
             target:
               entity_id: !input input_air_purifier
 
-mode: restart
+mode: single
