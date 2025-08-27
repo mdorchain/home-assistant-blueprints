@@ -24,43 +24,43 @@ blueprint:
   domain: automation
   source_url: https://raw.githubusercontent.com/mdorchain/home-assistant-blueprints/refs/heads/main/blueprints/air-purifier.yaml?token=GHSAT0AAAAAAB5T77MTZX6W3ANOPE5CN5VQ2FPLARA
 
-input:
-  input_pm25_sensor:
-    name: PM2.5 Sensor
-    selector:
-      entity:
-        domain: sensor
-  input_air_purifier:
-    name: Air Purifier Fan
-    selector:
-      entity:
-        domain: fan
-  input_threshold_on:
-    name: PM2.5 ON Threshold
-    description: Value above which the fan turns ON
-    default: 25
-    selector:
-      number:
-        min: 0
-        max: 500
-        unit_of_measurement: µg/m³
-        mode: slider
-  input_threshold_off:
-    name: PM2.5 OFF Threshold
-    description: Value below which the fan turns OFF
-    default: 15
-    selector:
-      number:
-        min: 0
-        max: 500
-        unit_of_measurement: µg/m³
-        mode: slider
-  time_period:
-    name: Trigger Duration
-    description: How long the PM2.5 value must remain stable before triggering
-    default: "00:05:00"
-    selector:
-      duration:
+  input:
+    input_pm25_sensor:
+      name: PM2.5 Sensor
+      selector:
+        entity:
+          domain: sensor
+    input_air_purifier:
+      name: Air Purifier Fan
+      selector:
+        entity:
+          domain: fan
+    input_threshold_on:
+      name: PM2.5 ON Threshold
+      description: Value above which the fan turns ON
+      default: 25
+      selector:
+        number:
+          min: 0
+          max: 500
+          unit_of_measurement: µg/m³
+          mode: slider
+    input_threshold_off:
+      name: PM2.5 OFF Threshold
+      description: Value below which the fan turns OFF
+      default: 15
+      selector:
+        number:
+          min: 0
+          max: 500
+          unit_of_measurement: µg/m³
+          mode: slider
+    time_period:
+      name: Trigger Duration
+      description: How long the PM2.5 value must remain stable before triggering
+      default: "00:05:00"
+      selector:
+        duration:
 
 variables:
   threshold_on: !input input_threshold_on
