@@ -6,4 +6,4 @@
 - Includes hysteresis (separate ON/OFF thresholds) to prevent toggling.
 
 **Import Blueprint**:  
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/YourName/home-assistant-blueprints/main/blueprints/air_purifier.yaml)
+[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/mdorchain/home-assistant-blueprints/refs/heads/main/blueprints/air-purifier.yaml?token=GHSAT0AAAAAAB5T77MTZX6W3ANOPE5CN5VQ2FPLARA)
