@@ -22,7 +22,7 @@ blueprint:
     Turns a fan on or off based on PM2.5 levels from a sensor.
     Includes hysteresis (separate ON/OFF thresholds) to avoid toggling.
   domain: automation
-  source_url: https://raw.githubusercontent.com/mdorchain/home-assistant-blueprints/refs/heads/main/blueprints/air-purifier.yaml?token=GHSAT0AAAAAAB5T77MTZX6W3ANOPE5CN5VQ2FPLARA
+  source_url: https://github.com/mdorchain/home-assistant-blueprints/blob/main/blueprints/air-purifier.yaml
 
   input:
     input_pm25_sensor:
