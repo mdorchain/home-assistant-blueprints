@@ -1,17 +1,10 @@
-blueprint:
-  name: 🌫️ Air Purifier Control (1.1.0)
-  description: >
-    Turns a fan on or off based on PM2.5 levels from a sensor.
-    Includes hysteresis (separate ON/OFF thresholds) to avoid toggling.
-  domain: automation
-  source_url: https://github.com/YourName/home-assistant-blueprints/blob/main/blueprints/air_purifier.yaml
 
 # -------------------------------------------------------------------
 # Blueprint Metadata
 # Version:      1.1.0
 # Last Updated: 2025-08-28
 # Author:       YourName
-# Source:       https://github.com/YourName/home-assistant-blueprints/
+# Source:       https://github.com/mdorchain/home-assistant-blueprints/
 #
 # Changelog:
 #   1.1.0 (2025-08-28) - Added hysteresis with ON/OFF thresholds
@@ -22,6 +15,14 @@ blueprint:
 #   when imported via raw GitHub URL.
 # - Keep input keys stable to avoid breaking existing automations.
 # -------------------------------------------------------------------
+
+blueprint:
+  name: 🌫️ Air Purifier Control (1.1.0)
+  description: >
+    Turns a fan on or off based on PM2.5 levels from a sensor.
+    Includes hysteresis (separate ON/OFF thresholds) to avoid toggling.
+  domain: automation
+  source_url: https://raw.githubusercontent.com/mdorchain/home-assistant-blueprints/refs/heads/main/blueprints/air-purifier.yaml?token=GHSAT0AAAAAAB5T77MTZX6W3ANOPE5CN5VQ2FPLARA
 
 input:
   input_pm25_sensor:
