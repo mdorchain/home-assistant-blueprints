@@ -30,18 +30,9 @@ blueprint:
     delay_time:
       name: Delay before recovery
       description: Time to wait before turning the device back on
-      default: "00:30:00"
+      default: "00:15:00"
       selector:
         duration:
-    recover_action:
-      name: Recovery action
-      description: Action to perform after delay (default = turn the entity back on)
-      default:
-        - service: homeassistant.turn_on
-          target:
-            entity_id: !input target_entity
-      selector:
-        action: {}
 
 mode: restart
 
@@ -57,5 +48,6 @@ condition:
 
 action:
   - delay: !input delay_time
-  - choose: []
-    default: !input recover_action
+  - service: homeassistant.turn_on
+    target:
+      entity_id: !input target_entity
