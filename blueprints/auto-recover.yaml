@@ -1,0 +1,61 @@
+
+# -------------------------------------------------------------------
+# Blueprint Metadata
+# Version:      1.0.0
+# Last Updated: 2025-09-13
+# Author:       Michael Dorchain
+# Source:       https://github.com/mdorchain/home-assistant-blueprints/
+#
+# Changelog:
+#   1.0.0 (2025-09-13) - Initial release
+#
+# Notes:
+# - Automatically turn a device back on after it turns off by itself (not by a user, automation, or script).  
+# - Useful for Xiaomi fans, air conditioners, or lights that power off unexpectedly.
+# -------------------------------------------------------------------
+
+blueprint:
+  name: Auto Recover Device
+  description: >
+    Automatically turn a device back on after it turns off by itself
+    (not by a user, automation, or script).  
+    Useful for Xiaomi fans, air conditioners, or lights that power off unexpectedly.
+  domain: automation
+  input:
+    target_entity:
+      name: Target entity
+      description: The device to monitor (fan, climate, light, switch, etc.)
+      selector:
+        entity: {}
+    delay_time:
+      name: Delay before recovery
+      description: Time to wait before turning the device back on
+      default: "00:30:00"
+      selector:
+        duration:
+    recover_action:
+      name: Recovery action
+      description: Action to perform after delay (default = turn the entity back on)
+      default:
+        - service: homeassistant.turn_on
+          target:
+            entity_id: !input target_entity
+      selector:
+        action: {}
+
+mode: restart
+
+trigger:
+  - platform: state
+    entity_id: !input target_entity
+    to: "off"
+
+condition:
+  - condition: template
+    value_template: >
+      {{ trigger.context.user_id is none and trigger.context.parent_id is none }}
+
+action:
+  - delay: !input delay_time
+  - choose: []
+    default: !input recover_action
