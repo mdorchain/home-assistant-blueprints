@@ -13,4 +13,4 @@
 - Automatically turn a device back on after it turns off by itself
 
 **Import Blueprint**:  
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/mdorchain/home-assistant-blueprints/refs/heads/main/blueprints/air-purifier.yaml)
+[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/mdorchain/home-assistant-blueprints/refs/heads/main/blueprints/auto-recover.yaml)
