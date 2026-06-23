@@ -1,12 +1,12 @@
-
 # -------------------------------------------------------------------
 # Blueprint Metadata
-# Version:      1.1.0
-# Last Updated: 2025-08-28
-# Author:       YourName
-# Source:       https://github.com/mdorchain/home-assistant-blueprints/
+# Version:       1.2.0
+# Last Updated: 2026-06-23
+# Author:        YourName
+# Source:        https://github.com/mdorchain/home-assistant-blueprints/
 #
 # Changelog:
+#   1.2.0 (2026-06-23) - Added global condition to only run if preset is "Auto"
 #   1.1.0 (2025-08-28) - Added hysteresis with ON/OFF thresholds
 #   1.0.0 (2025-08-27) - Initial release with single threshold
 #
@@ -17,10 +17,10 @@
 # -------------------------------------------------------------------
 
 blueprint:
-  name: 🌫️ Air Purifier Control (1.1.0)
+  name: 🌫️ Air Purifier Control (1.2.0)
   description: >
     Turns a fan on or off based on PM2.5 levels from a sensor.
-    Includes hysteresis (separate ON/OFF thresholds) to avoid toggling.
+    Only triggers if the air purifier is currently set to the "Auto" preset.
   domain: automation
   source_url: https://github.com/mdorchain/home-assistant-blueprints/blob/main/blueprints/air-purifier.yaml
 
@@ -69,6 +69,7 @@ blueprint:
 variables:
   threshold_on: !input input_threshold_on
   threshold_off: !input input_threshold_off
+  air_purifier: !input input_air_purifier
 
 trigger:
   - platform: state
@@ -76,6 +77,10 @@ trigger:
     for: !input time_period
 
 action:
+  # Only proceed if the fan is currently in "Auto" mode
+  - condition: template
+    value_template: "{{ state_attr(air_purifier, 'preset_mode') == 'Auto' }}"
+    
   - choose:
       - conditions:
           - condition: template
