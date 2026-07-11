@@ -1,3 +1,14 @@
+# -------------------------------------------------------------------
+# Blueprint Metadata
+# Version:       1.0.0
+# Last Updated: 2026-06-23
+# Author:        Michael Dorchain
+# Source:        https://github.com/mdorchain/home-assistant-blueprints/
+#
+# Changelog:
+#   1.0.0 (2026-07-12) - Initial release
+# -------------------------------------------------------------------
+
 blueprint:
   name: Reolink Multi-Camera Person Notification
   description: One automation to rule them all. Select multiple person sensors, and it will dynamically match the snapshot and camera name based on whichever one triggered.
@@ -10,13 +21,15 @@ blueprint:
         entity:
           domain: binary_sensor
           device_class: occupancy
-          multiple: true # Allows selecting multiple sensors at once!
-    notify_action:
-      name: Notification Action
-      description: Select the mobile phone notification action to send this alert to (e.g., notify.mobile_app_your_phone).
+          multiple: true
+    notify_service:
+      name: Notification Service
+      description: Select the mobile phone notification service to send this alert to (e.g., notify.mobile_app_your_phone).
       selector:
-        action: {}
-
+        services:
+          filter:
+            domain: notify
+            
 mode: parallel
 max: 10
 
@@ -28,14 +41,12 @@ trigger:
 condition: []
 
 action:
-  - action: !input notify_action
+  # Using the input directly as the action name resolves the malformed syntax error
+  - action: !input notify_service
     data:
       title: "Person Detected"
-      # 1. Look up the name of the specific sensor that triggered this run
-      # 2. Strip out words like "Person" or "motion" to leave a clean camera name
       message: "Person spotted at {{ trigger.to_state.name | replace(' Person', '') | replace(' person', '') }}."
       data:
-        # Dynamically targets the correct snapshot entity by swapping '_person' for '_snapshots_clear' in the triggering entity ID
         image: "/api/camera_proxy/{{ trigger.entity_id | replace('binary_sensor.', 'camera.') | replace('_person', '_snapshots_clear') }}"
         attachment:
           url: "/api/camera_proxy/{{ trigger.entity_id | replace('binary_sensor.', 'camera.') | replace('_person', '_snapshots_clear') }}"
