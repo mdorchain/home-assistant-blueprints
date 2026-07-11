@@ -14,3 +14,10 @@
 
 **Import Blueprint**:  
 [![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/mdorchain/home-assistant-blueprints/refs/heads/main/blueprints/auto-recover.yaml)
+
+### 🌫️ Reolink push notifications
+
+- Send a push notification when a person is detected
+
+**Import Blueprint**:  
+[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/mdorchain/home-assistant-blueprints/refs/heads/main/blueprints/reolink-notifications.yaml)
