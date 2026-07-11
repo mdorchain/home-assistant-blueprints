@@ -23,13 +23,11 @@ blueprint:
           device_class: occupancy
           multiple: true
     notify_service:
-      name: Notification Service
-      description: Select the mobile phone notification service to send this alert to (e.g., notify.mobile_app_your_phone).
+      name: Notification Service String
+      description: Type your exact mobile notification service name here (e.g., notify.mobile_app_your_phone).
       selector:
-        services:
-          filter:
-            domain: notify
-            
+        text: {} # A pure text selector guarantees a safe string data type
+
 mode: parallel
 max: 10
 
@@ -41,7 +39,6 @@ trigger:
 condition: []
 
 action:
-  # Using the input directly as the action name resolves the malformed syntax error
   - action: !input notify_service
     data:
       title: "Person Detected"
