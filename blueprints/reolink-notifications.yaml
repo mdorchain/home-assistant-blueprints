@@ -1,0 +1,43 @@
+blueprint:
+  name: Reolink Multi-Camera Person Notification
+  description: One automation to rule them all. Select multiple person sensors, and it will dynamically match the snapshot and camera name based on whichever one triggered.
+  domain: automation
+  input:
+    person_sensors:
+      name: Person Detection Binary Sensors
+      description: Select all the Reolink person binary sensors you want to monitor.
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: occupancy
+          multiple: true # Allows selecting multiple sensors at once!
+    notify_action:
+      name: Notification Action
+      description: Select the mobile phone notification action to send this alert to (e.g., notify.mobile_app_your_phone).
+      selector:
+        action: {}
+
+mode: parallel
+max: 10
+
+trigger:
+  - platform: state
+    entity_id: !input person_sensors
+    to: "on"
+
+condition: []
+
+action:
+  - action: !input notify_action
+    data:
+      title: "Person Detected"
+      # 1. Look up the name of the specific sensor that triggered this run
+      # 2. Strip out words like "Person" or "motion" to leave a clean camera name
+      message: "Person spotted at {{ trigger.to_state.name | replace(' Person', '') | replace(' person', '') }}."
+      data:
+        # Dynamically targets the correct snapshot entity by swapping '_person' for '_snapshots_clear' in the triggering entity ID
+        image: "/api/camera_proxy/{{ trigger.entity_id | replace('binary_sensor.', 'camera.') | replace('_person', '_snapshots_clear') }}"
+        attachment:
+          url: "/api/camera_proxy/{{ trigger.entity_id | replace('binary_sensor.', 'camera.') | replace('_person', '_snapshots_clear') }}"
+          content-type: jpeg
+        clickAction: /lovelace/home
