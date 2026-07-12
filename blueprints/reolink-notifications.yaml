@@ -58,8 +58,6 @@ condition:
       {{ trigger.from_state is none or (now() - trigger.from_state.last_changed).total_seconds() > (cooldown_time | float) }}
 
 action:
-  - replace_parent_by_unique_id:
-    unique_id: "{{ trigger.entity_id }}"
   - action: !input notify_service
     data:
       title: "Person Detected"
