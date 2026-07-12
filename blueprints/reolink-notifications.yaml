@@ -55,8 +55,7 @@ condition:
   # It compares the current time to the last time that specific binary sensor changed.
   - condition: template
     value_template: >-
-      {{ trigger.from_state is none or 
-         (now() - trigger.from_state.last_changed).total_seconds() > (cooldown_time | float) }}
+      {{ trigger.from_state is none or (now() - trigger.from_state.last_changed).total_seconds() > (cooldown_time | float) }}
 
 action:
   - replace_parent_by_unique_id:
