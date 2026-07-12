@@ -12,7 +12,7 @@
 # -------------------------------------------------------------------
 
 blueprint:
-  name: Reolink Multi-Camera Person Notification (Smart Resolution Fallback)
+  name: Reolink Multi-Camera Person Notification
   description: One automation to rule them all. Automatically uses snapshots_clear if available, otherwise safely falls back to snapshots_fluent.
   domain: automation
   input:
