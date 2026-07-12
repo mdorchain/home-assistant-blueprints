@@ -7,11 +7,13 @@
 #
 # Changelog:
 #   1.0.0 (2026-07-12) - Initial release
+#   1.0.1 (2026-07-13) - Reolink app URI updated to match the latest version of the Reolink app.
+#   1.0.2 (2026-07-14) - Improved fallback logic for camera snapshot retrieval.
 # -------------------------------------------------------------------
 
 blueprint:
-  name: Reolink Multi-Camera Person Notification
-  description: One automation to rule them all. Select multiple person sensors, and it will dynamically match the snapshot and camera name based on whichever one triggered.
+  name: Reolink Multi-Camera Person Notification (Smart Resolution Fallback)
+  description: One automation to rule them all. Automatically uses snapshots_clear if available, otherwise safely falls back to snapshots_fluent.
   domain: automation
   input:
     person_sensors:
@@ -26,7 +28,7 @@ blueprint:
       name: Notification Service String
       description: Type your exact mobile notification service name here (e.g., notify.mobile_app_your_phone).
       selector:
-        text: {} # A pure text selector guarantees a safe string data type
+        text: {}
 
 mode: parallel
 max: 10
@@ -44,8 +46,25 @@ action:
       title: "Person Detected"
       message: "Person spotted at {{ trigger.to_state.name | replace(' Person', '') | replace(' person', '') }}."
       data:
-        image: "/api/camera_proxy/{{ trigger.entity_id | replace('binary_sensor.', 'camera.') | replace('_person', '_snapshots_clear') }}"
+        # The template checks if the clear camera entity exists; if not, it uses fluent.
+        image: >-
+          {% set base = trigger.entity_id | replace('binary_sensor.', 'camera.') | replace('_person', '') %}
+          {% if states(base ~ '_snapshots_clear') != 'unknown' %}
+            /api/camera_proxy/{{ base }}_snapshots_clear
+          {% else %}
+            /api/camera_proxy/{{ base }}_snapshots_fluent
+          {% endif %}
         attachment:
-          url: "/api/camera_proxy/{{ trigger.entity_id | replace('binary_sensor.', 'camera.') | replace('_person', '_snapshots_clear') }}"
+          url: >-
+            {% set base = trigger.entity_id | replace('binary_sensor.', 'camera.') | replace('_person', '') %}
+            {% if states(base ~ '_snapshots_clear') != 'unknown' %}
+              /api/camera_proxy/{{ base }}_snapshots_clear
+            {% else %}
+              /api/camera_proxy/{{ base }}_snapshots_fluent
+            {% endif %}
           content-type: jpeg
-        clickAction: /lovelace/home
+        clickAction: /lovelace/cameras
+        actions:
+          - action: "URI"
+            title: "Open Reolink App"
+            uri: "app://com.mcu.reolink"
