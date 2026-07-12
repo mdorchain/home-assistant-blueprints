@@ -60,7 +60,7 @@ action:
   # Independent per-camera cooldown validation step
   - condition: template
     value_template: >-
-      {{ trigger.from_state is none or (now() - trigger.from_state.last_reported).total_seconds() > (cooldown | float) }}
+      {{ trigger.from_state is none or (now() - trigger.from_state.last_changed).total_seconds() > (cooldown | float) }}
 
   # Wrapping the dynamic input string explicitly inside an explicit action statement block
   - action: "{{ target_service }}"
