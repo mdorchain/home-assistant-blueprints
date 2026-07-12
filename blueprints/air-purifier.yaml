@@ -12,7 +12,7 @@
 # -------------------------------------------------------------------
 
 blueprint:
-  name: 🌫️ Xiaomi Air Purifier Control (1.6.0)
+  name: 🌫️ Xiaomi Air Purifier Control
   description: >
     Controls a Xiaomi fan based on PM2.5 levels when set to "Auto". 
     If the preset is set to "Manual", it forces your Xiaomi favorite level number entity to 14.
