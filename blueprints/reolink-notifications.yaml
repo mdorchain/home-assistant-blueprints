@@ -11,21 +11,21 @@
 #   1.0.2 (2026-07-14) - Improved fallback logic for camera snapshot retrieval.
 #   1.0.3 (2026-07-15) - Added support for multiple person sensors and improved notification formatting.
 #   1.0.4 (2026-07-16) - Added cooldown time for notifications to prevent spamming.
+#   1.0.5 (2026-07-17) - Updated blueprint to use a more efficient template for checking last triggered time. Single camera per automation instance is now enforced.
 # -------------------------------------------------------------------
 
 blueprint:
-  name: Reolink Multi-Camera Person Notification
-  description: Automatically uses snapshots_clear if available, otherwise safely falls back to snapshots_fluent.
+  name: Reolink Camera Person Notification
+  description: Fires instantly and terminates. Uses a clean mathematical lookback condition to prevent flicker spam without leaving active delays hanging.
   domain: automation
   input:
-    person_sensors:
-      name: Person Detection Binary Sensors
-      description: Select all the Reolink person binary sensors you want to monitor.
+    person_sensor:
+      name: Person/Motion Detection Binary Sensor
+      description: The Reolink binary sensor for this specific camera (e.g., binary_sensor.front_door_person or binary_sensor.front_door_motion).
       selector:
         entity:
           domain: binary_sensor
           device_class: occupancy
-          multiple: true
     notify_service:
       name: Notification Service String
       description: Type your exact mobile notification service name here (e.g., notify.mobile_app_your_phone).
@@ -33,7 +33,7 @@ blueprint:
         text: {}
     cooldown_time:
       name: Notification Cooldown (Seconds)
-      description: The number of seconds to wait before letting the SAME camera trigger another notification. Other cameras will remain unaffected.
+      description: The number of seconds to lock out this specific camera from spamming your phone after a trigger.
       default: 30
       selector:
         number:
@@ -42,34 +42,34 @@ blueprint:
           unit_of_measurement: seconds
           mode: slider
 
-mode: parallel
-max: 10
+# Using 'single' combined with a condition allows the script to stop immediately if it fails the time check
+mode: single
 
 trigger:
   - platform: state
-    entity_id: !input person_sensors
+    entity_id: !input person_sensor
     to: "on"
 
-condition: []
+condition:
+  # If it has never run, or if the time since it last ran is greater than the cooldown, it passes.
+  - condition: template
+    value_template: >-
+      {{ this.attributes.last_triggered is none or 
+         (now() - this.attributes.last_triggered).total_seconds() > (cooldown_time | float) }}
 
 action:
   - variables:
-      cooldown: !input cooldown_time
       target_service: !input notify_service
+      sensor_entity: !input person_sensor
 
-  # Independent per-camera cooldown validation step
-  - condition: template
-    value_template: >-
-      {{ trigger.from_state is none or (now() - trigger.from_state.last_changed).total_seconds() > (cooldown | float) }}
-
-  # Wrapping the dynamic input string explicitly inside an explicit action statement block
+  # Send the push notification instantly
   - action: "{{ target_service }}"
     data:
       title: "Person Detected"
-      message: "Person spotted at {{ trigger.to_state.name | replace(' Person', '') | replace(' person', '') }}."
+      message: "Person spotted at {{ states[sensor_entity].name | replace(' Person', '') | replace(' person', '') }}."
       data:
         image: >-
-          {% set base = trigger.entity_id | replace('binary_sensor.', 'camera.') | replace('_person', '') %}
+          {% set base = sensor_entity | replace('binary_sensor.', 'camera.') | replace('_person', '') %}
           {% if states(base ~ '_snapshots_clear') != 'unknown' %}
             /api/camera_proxy/{{ base }}_snapshots_clear
           {% else %}
@@ -77,7 +77,7 @@ action:
           {% endif %}
         attachment:
           url: >-
-            {% set base = trigger.entity_id | replace('binary_sensor.', 'camera.') | replace('_person', '') %}
+            {% set base = sensor_entity | replace('binary_sensor.', 'camera.') | replace('_person', '') %}
             {% if states(base ~ '_snapshots_clear') != 'unknown' %}
               /api/camera_proxy/{{ base }}_snapshots_clear
             {% else %}
