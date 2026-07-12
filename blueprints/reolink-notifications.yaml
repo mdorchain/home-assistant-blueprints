@@ -16,7 +16,8 @@
 blueprint:
   name: Reolink Multi-Camera Person Notification
   description: Automatically uses snapshots_clear if available, otherwise safely falls back to snapshots_fluent.
-  domain: automationinput:
+  domain: automation
+  input:
     person_sensors:
       name: Person Detection Binary Sensors
       description: Select all the Reolink person binary sensors you want to monitor.
