@@ -17,7 +17,7 @@
 
 
 blueprint:
-  name: Reolink Camera Person Notification (Modern Notify Engine)
+  name: Reolink Camera Person Notification
   description: Fires instantly and terminates. Uses the modern notify.send_message engine with target entity mapping and a lookback cooldown.
   domain: automation
   input:
