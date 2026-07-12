@@ -53,17 +53,16 @@ trigger:
 condition: []
 
 action:
-  # FIX: We map the input to a local variable block so the automation can use it dynamically
   - variables:
       cooldown: !input cooldown_time
       target_service: !input notify_service
 
-  # FIX FOR FLICKERING: We use a template condition that evaluates how long the sensor has been continuously active overall,
-  # or we pass a brief delay block to throttle executions per-entity.
+  # Independent per-camera cooldown validation step
   - condition: template
     value_template: >-
       {{ trigger.from_state is none or (now() - trigger.from_state.last_reported).total_seconds() > (cooldown | float) }}
 
+  # Wrapping the dynamic input string explicitly inside an explicit action statement block
   - action: "{{ target_service }}"
     data:
       title: "Person Detected"
@@ -85,7 +84,7 @@ action:
               /api/camera_proxy/{{ base }}_snapshots_fluent
             {% endif %}
           content-type: jpeg
-        clickAction: /lovelace/
+        clickAction: /lovelace/cameras
         actions:
           - action: "URI"
             title: "Open Reolink App"
