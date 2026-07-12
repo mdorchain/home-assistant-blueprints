@@ -9,6 +9,8 @@
 #   1.0.0 (2026-07-12) - Initial release
 #   1.0.1 (2026-07-13) - Reolink app URI updated to match the latest version of the Reolink app.
 #   1.0.2 (2026-07-14) - Improved fallback logic for camera snapshot retrieval.
+#   1.0.3 (2026-07-15) - Added support for multiple person sensors and improved notification formatting.
+#   1.0.4 (2026-07-16) - Added cooldown time for notifications to prevent spamming.
 # -------------------------------------------------------------------
 
 blueprint:
@@ -29,6 +31,16 @@ blueprint:
       description: Type your exact mobile notification service name here (e.g., notify.mobile_app_your_phone).
       selector:
         text: {}
+    cooldown_time:
+      name: Notification Cooldown (Seconds)
+      description: The number of seconds to wait before letting the SAME camera trigger another notification. Other cameras will remain unaffected.
+      default: 30
+      selector:
+        number:
+          min: 0
+          max: 300
+          unit_of_measurement: seconds
+          mode: slider
 
 mode: parallel
 max: 10
@@ -38,9 +50,17 @@ trigger:
     entity_id: !input person_sensors
     to: "on"
 
-condition: []
+condition:
+  # NATIVE FIX: Checks if the specific sensor that triggered has changed states too recently.
+  # It compares the current time to the last time that specific binary sensor changed.
+  - condition: template
+    value_template: >-
+      {{ trigger.from_state is none or 
+         (now() - trigger.from_state.last_changed).total_seconds() > (cooldown_time | float) }}
 
 action:
+  - replace_parent_by_unique_id:
+    unique_id: "{{ trigger.entity_id }}"
   - action: !input notify_service
     data:
       title: "Person Detected"
