@@ -12,27 +12,31 @@
 #   1.0.3 (2026-07-15) - Added support for multiple person sensors and improved notification formatting.
 #   1.0.4 (2026-07-16) - Added cooldown time for notifications to prevent spamming.
 #   1.0.5 (2026-07-17) - Updated blueprint to use a more efficient template for checking last triggered time. Single camera per automation instance is now enforced.
+#   1.0.6 (2026-07-18) - Added support for multiple notification targets and improved error handling for missing camera snapshots.
 # -------------------------------------------------------------------
 
+
 blueprint:
-  name: Reolink Camera Person Notification
-  description: Fires instantly and terminates. Uses a clean mathematical lookback condition to prevent flicker spam without leaving active delays hanging.
+  name: Reolink Camera Person Notification (Modern Notify Engine)
+  description: Fires instantly and terminates. Uses the modern notify.send_message engine with target entity mapping and a lookback cooldown.
   domain: automation
   input:
     person_sensor:
-      name: Person/Motion Detection Binary Sensor
-      description: The Reolink binary sensor for this specific camera (e.g., binary_sensor.front_door_person or binary_sensor.front_door_motion).
+      name: Person Detection Binary Sensor
+      description: The Reolink binary sensor for this specific camera (e.g., binary_sensor.front_door_person).
       selector:
         entity:
           domain: binary_sensor
           device_class: 
             - occupancy
             - motion
-    notify_service:
-      name: Notification Service String
-      description: Type your exact mobile notification service name here (e.g., notify.mobile_app_your_phone).
+    notification_targets:
+      name: Notification Targets
+      description: Select the notify entities/devices that should receive this message (e.g., notify.mobile_app_your_phone).
       selector:
-        text: {}
+        target:
+          entity:
+            domain: notify
     cooldown_time:
       name: Notification Cooldown (Seconds)
       description: The number of seconds to lock out this specific camera from spamming your phone after a trigger.
@@ -44,7 +48,6 @@ blueprint:
           unit_of_measurement: seconds
           mode: slider
 
-# Using 'single' combined with a condition allows the script to stop immediately if it fails the time check
 mode: single
 
 trigger:
@@ -53,7 +56,6 @@ trigger:
     to: "on"
 
 condition:
-  # If it has never run, or if the time since it last ran is greater than the cooldown, it passes.
   - condition: template
     value_template: >-
       {{ this.attributes.last_triggered is none or 
@@ -61,17 +63,17 @@ condition:
 
 action:
   - variables:
-      target_service: !input notify_service
       sensor_entity: !input person_sensor
 
-  # Send the push notification instantly
-  - action: "{{ target_service }}"
+  # The modern Home Assistant unified notification execution step
+  - action: notify.send_message
+    target: !input notification_targets
     data:
       title: "Person Detected"
-      message: "Person spotted at {{ states[sensor_entity].name | replace(' Person', '') | replace(' person', '') }}."
+      message: "Person spotted at {{ states[sensor_entity].name | replace(' Person', '') | replace(' person', '') | replace(' Motion', '') | replace(' motion', '') }}."
       data:
         image: >-
-          {% set base = sensor_entity | replace('binary_sensor.', 'camera.') | replace('_person', '') %}
+          {% set base = sensor_entity | replace('binary_sensor.', 'camera.') | replace('_person', '') | replace('_motion', '') %}
           {% if states(base ~ '_snapshots_clear') != 'unknown' %}
             /api/camera_proxy/{{ base }}_snapshots_clear
           {% else %}
@@ -79,14 +81,14 @@ action:
           {% endif %}
         attachment:
           url: >-
-            {% set base = sensor_entity | replace('binary_sensor.', 'camera.') | replace('_person', '') %}
+            {% set base = sensor_entity | replace('binary_sensor.', 'camera.') | replace('_person', '') | replace('_motion', '') %}
             {% if states(base ~ '_snapshots_clear') != 'unknown' %}
               /api/camera_proxy/{{ base }}_snapshots_clear
             {% else %}
               /api/camera_proxy/{{ base }}_snapshots_fluent
             {% endif %}
           content-type: jpeg
-        clickAction: /lovelace/cameras
+        clickAction: /lovelace
         actions:
           - action: "URI"
             title: "Open Reolink App"
