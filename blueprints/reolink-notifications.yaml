@@ -25,7 +25,9 @@ blueprint:
       selector:
         entity:
           domain: binary_sensor
-          device_class: occupancy
+          device_class: 
+            - occupancy
+            - motion
     notify_service:
       name: Notification Service String
       description: Type your exact mobile notification service name here (e.g., notify.mobile_app_your_phone).
