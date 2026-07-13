@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------
 # Blueprint Metadata
-# Version:       1.0.6
+# Version:       1.0.7
 # Last Updated:  2026-07-13
 # Author:        Michael Dorchain
 # Source:        https://github.com/mdorchain/home-assistant-blueprints/
@@ -13,12 +13,12 @@
 #   1.0.4 (2026-07-16) - Added cooldown time for notifications to prevent spamming.
 #   1.0.5 (2026-07-17) - Updated blueprint to use a more efficient template for checking last triggered time. Single camera per automation instance is now enforced.
 #   1.0.6 (2026-07-18) - Added support for multiple notification targets and improved error handling for missing camera snapshots.
+#   1.0.7 (2026-07-19) - Added support for multiple rich notification targets and improved error handling for missing camera snapshots.
 # -------------------------------------------------------------------
-
 
 blueprint:
   name: Reolink Camera Person Notification
-  description: Fires instantly and terminates. Uses the modern notify.send_message engine with target entity mapping and a lookback cooldown.
+  description: Fires instantly and terminates. Loops through multiple chosen target mobile notification apps to send snapshots, clickable actions, and app redirects.
   domain: automation
   input:
     person_sensor:
@@ -31,15 +31,15 @@ blueprint:
             - occupancy
             - motion
     notification_targets:
-      name: Notification Targets
-      description: Select the notify entities/devices that should receive this message (e.g., notify.mobile_app_your_phone).
+      name: Mobile App Notification Targets
+      description: Choose all the target mobile devices/notify entities you want to alert simultaneously.
       selector:
         target:
           entity:
             domain: notify
     cooldown_time:
       name: Notification Cooldown (Seconds)
-      description: The number of seconds to lock out this specific camera from spamming your phone after a trigger.
+      description: The number of seconds to lock out this specific camera from spamming your phones after a trigger.
       default: 30
       selector:
         number:
@@ -52,6 +52,8 @@ mode: single
 
 variables:
   cooldown: !input cooldown_time
+  # Capture the target inputs at the root level to parse their entity IDs safely
+  raw_targets: !input notification_targets
 
 trigger:
   - platform: state
@@ -62,37 +64,46 @@ condition:
   - condition: template
     value_template: >-
       {{ this.attributes.last_triggered is none or 
-         (now() - this.attributes.last_triggered).total_seconds() > (cooldown_time | float) }}
+         (now() - this.attributes.last_triggered).total_seconds() > (cooldown | float) }}
 
 action:
-  - variables:
-      sensor_entity: !input person_sensor
+  # Loop cleanly over every item selected in your UI target picker box
+  - repeat:
+      for_each: >-
+        {% if raw_targets.entity_id is string %}
+          {{ [raw_targets.entity_id] }}
+        {% else %}
+          {{ raw_targets.entity_id }}
+        {% endif %}
+      sequence:
+        - variables:
+            sensor_entity: !input person_sensor
+            # Extract the specific phone notification string for this loop iteration
+            current_target: "{{ repeat.item }}"
 
-  # The modern Home Assistant unified notification execution step
-  - action: notify.send_message
-    target: !input notification_targets
-    data:
-      title: "Person Detected"
-      message: "Person spotted at {{ states[sensor_entity].name | replace(' Person', '') | replace(' person', '') | replace(' Motion', '') | replace(' motion', '') }}."
-      data:
-        image: >-
-          {% set base = sensor_entity | replace('binary_sensor.', 'camera.') | replace('_person', '') | replace('_motion', '') %}
-          {% if states(base ~ '_snapshots_clear') != 'unknown' %}
-            /api/camera_proxy/{{ base }}_snapshots_clear
-          {% else %}
-            /api/camera_proxy/{{ base }}_snapshots_fluent
-          {% endif %}
-        attachment:
-          url: >-
-            {% set base = sensor_entity | replace('binary_sensor.', 'camera.') | replace('_person', '') | replace('_motion', '') %}
-            {% if states(base ~ '_snapshots_clear') != 'unknown' %}
-              /api/camera_proxy/{{ base }}_snapshots_clear
-            {% else %}
-              /api/camera_proxy/{{ base }}_snapshots_fluent
-            {% endif %}
-          content-type: jpeg
-        clickAction: /lovelace
-        actions:
-          - action: "URI"
-            title: "Open Reolink App"
-            uri: "app://com.mcu.reolink"
+        - action: "{{ current_target }}"
+          data:
+            title: "Person Detected"
+            message: "Person spotted at {{ states[sensor_entity].name | replace(' Person', '') | replace(' person', '') | replace(' Motion', '') | replace(' motion', '') }}."
+            data:
+              image: >-
+                {% set base = sensor_entity | replace('binary_sensor.', 'camera.') | replace('_person', '') | replace('_motion', '') %}
+                {% if states(base ~ '_snapshots_clear') != 'unknown' %}
+                  /api/camera_proxy/{{ base }}_snapshots_clear
+                {% else %}
+                  /api/camera_proxy/{{ base }}_snapshots_fluent
+                {% endif %}
+              attachment:
+                url: >-
+                  {% set base = sensor_entity | replace('binary_sensor.', 'camera.') | replace('_person', '') | replace('_motion', '') %}
+                  {% if states(base ~ '_snapshots_clear') != 'unknown' %}
+                    /api/camera_proxy/{{ base }}_snapshots_clear
+                  {% else %}
+                    /api/camera_proxy/{{ base }}_snapshots_fluent
+                  {% endif %}
+                content-type: jpeg
+              clickAction: /lovelace
+              actions:
+                - action: "URI"
+                  title: "Open Reolink App"
+                  uri: "app://com.mcu.reolink"
