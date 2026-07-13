@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------
 # Blueprint Metadata
-# Version:       1.0.7
+# Version:       1.0.8
 # Last Updated:  2026-07-13
 # Author:        Michael Dorchain
 # Source:        https://github.com/mdorchain/home-assistant-blueprints/
@@ -14,12 +14,13 @@
 #   1.0.5 (2026-07-17) - Updated blueprint to use a more efficient template for checking last triggered time. Single camera per automation instance is now enforced.
 #   1.0.6 (2026-07-18) - Added support for multiple notification targets and improved error handling for missing camera snapshots.
 #   1.0.7 (2026-07-19) - Added support for multiple rich notification targets and improved error handling for missing camera snapshots.
+#   1.0.8 (2026-07-20) - Open snapshot in full screen on tap, and added a direct link to open the Reolink app.
 # -------------------------------------------------------------------
 
 
 blueprint:
-  name: Reolink Camera Person Notification (Device Native Action)
-  description: Fires instantly and terminates. Resolves a clean device-level picker to its explicit mobile app notify action path, fully supporting images and buttons.
+  name: Reolink Camera Person Notification (Fullscreen Deep Link)
+  description: Fires instantly and terminates. Resolves a device-level picker to its explicit mobile app notify action path, and opens the snapshot full screen on click.
   domain: automation
   input:
     person_sensor:
@@ -68,7 +69,6 @@ condition:
 action:
   - variables:
       sensor_entity: !input person_sensor
-      # Dynamically maps the selected UI device ID to its rich-text backend action string
       current_action: "notify.mobile_app_{{ device_attr(target_device, 'name') | slugify }}"
 
   - action: "{{ current_action }}"
@@ -92,7 +92,16 @@ action:
               /api/camera_proxy/{{ base }}_snapshots_fluent
             {% endif %}
           content-type: jpeg
-        clickAction: /lovelace
+        
+        # FIXED: Uses the entityId: prefix to pop the exact snapshot frame open full size on tap
+        clickAction: >-
+          {% set base = sensor_entity | replace('binary_sensor.', 'camera.') | replace('_person', '') | replace('_motion', '') %}
+          {% if states(base ~ '_snapshots_clear') != 'unknown' %}
+            entityId:camera.{{ base | replace('camera.', '') }}_snapshots_clear
+          {% else %}
+            entityId:camera.{{ base | replace('camera.', '') }}_snapshots_fluent
+          {% endif %}
+
         actions:
           - action: "URI"
             title: "Open Reolink App"
