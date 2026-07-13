@@ -50,6 +50,9 @@ blueprint:
 
 mode: single
 
+variables:
+  cooldown: !input cooldown_time
+
 trigger:
   - platform: state
     entity_id: !input person_sensor
