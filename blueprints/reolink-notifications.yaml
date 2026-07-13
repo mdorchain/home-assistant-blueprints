@@ -16,9 +16,10 @@
 #   1.0.7 (2026-07-19) - Added support for multiple rich notification targets and improved error handling for missing camera snapshots.
 # -------------------------------------------------------------------
 
+
 blueprint:
-  name: Reolink Camera Person Notification (Modern Notify Engine)
-  description: Fires instantly and terminates. Natively maps the target engine selector to clean notification execution paths.
+  name: Reolink Camera Person Notification (Device Native Action)
+  description: Fires instantly and terminates. Resolves a clean device-level picker to its explicit mobile app notify action path, fully supporting images and buttons.
   domain: automation
   input:
     person_sensor:
@@ -30,13 +31,12 @@ blueprint:
           device_class: 
             - occupancy
             - motion
-    notification_targets:
-      name: Notification Targets
-      description: Select the notify entities/devices that should receive this message (e.g., notify.mobile_app_your_phone).
+    notify_device:
+      name: Device to Notify
+      description: Select the target phone or tablet running the Home Assistant Companion App.
       selector:
-        target:
-          entity:
-            domain: notify
+        device:
+          integration: mobile_app
     cooldown_time:
       name: Notification Cooldown (Seconds)
       description: The number of seconds to lock out this specific camera from spamming your phone after a trigger.
@@ -52,6 +52,7 @@ mode: single
 
 variables:
   cooldown: !input cooldown_time
+  target_device: !input notify_device
 
 trigger:
   - platform: state
@@ -67,10 +68,10 @@ condition:
 action:
   - variables:
       sensor_entity: !input person_sensor
+      # Dynamically maps the selected UI device ID to its rich-text backend action string
+      current_action: "notify.mobile_app_{{ device_attr(target_device, 'name') | slugify }}"
 
-  # Clean fix: Natively maps the target config object directly without risky string manipulation
-  - action: notify.send_message
-    target: !input notification_targets
+  - action: "{{ current_action }}"
     data:
       title: "Person Detected"
       message: "Person spotted at {{ states[sensor_entity].name | replace(' Person', '') | replace(' person', '') | replace(' Motion', '') | replace(' motion', '') }}."
