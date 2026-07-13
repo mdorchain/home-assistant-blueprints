@@ -17,8 +17,8 @@
 # -------------------------------------------------------------------
 
 blueprint:
-  name: Reolink Camera Person Notification
-  description: Fires instantly and terminates. Loops through multiple chosen target mobile notification apps to send snapshots, clickable actions, and app redirects.
+  name: Reolink Camera Person Notification (Modern Notify Engine)
+  description: Fires instantly and terminates. Dynamically resolves target entities to their specific notification action path.
   domain: automation
   input:
     person_sensor:
@@ -31,15 +31,15 @@ blueprint:
             - occupancy
             - motion
     notification_targets:
-      name: Mobile App Notification Targets
-      description: Choose all the target mobile devices/notify entities you want to alert simultaneously.
+      name: Notification Targets
+      description: Select the notify entities/devices that should receive this message (e.g., notify.mobile_app_your_phone).
       selector:
         target:
           entity:
             domain: notify
     cooldown_time:
       name: Notification Cooldown (Seconds)
-      description: The number of seconds to lock out this specific camera from spamming your phones after a trigger.
+      description: The number of seconds to lock out this specific camera from spamming your phone after a trigger.
       default: 30
       selector:
         number:
@@ -52,8 +52,7 @@ mode: single
 
 variables:
   cooldown: !input cooldown_time
-  # Capture the target inputs at the root level to parse their entity IDs safely
-  raw_targets: !input notification_targets
+  targets: !input notification_targets
 
 trigger:
   - platform: state
@@ -67,43 +66,33 @@ condition:
          (now() - this.attributes.last_triggered).total_seconds() > (cooldown | float) }}
 
 action:
-  # Loop cleanly over every item selected in your UI target picker box
-  - repeat:
-      for_each: >-
-        {% if raw_targets.entity_id is string %}
-          {{ [raw_targets.entity_id] }}
-        {% else %}
-          {{ raw_targets.entity_id }}
-        {% endif %}
-      sequence:
-        - variables:
-            sensor_entity: !input person_sensor
-            # Extract the specific phone notification string for this loop iteration
-            current_target: "{{ repeat.item }}"
+  - variables:
+      sensor_entity: !input person_sensor
+      current_action: "{{ targets.entity_id }}"
 
-        - action: "{{ current_target }}"
-          data:
-            title: "Person Detected"
-            message: "Person spotted at {{ states[sensor_entity].name | replace(' Person', '') | replace(' person', '') | replace(' Motion', '') | replace(' motion', '') }}."
-            data:
-              image: >-
-                {% set base = sensor_entity | replace('binary_sensor.', 'camera.') | replace('_person', '') | replace('_motion', '') %}
-                {% if states(base ~ '_snapshots_clear') != 'unknown' %}
-                  /api/camera_proxy/{{ base }}_snapshots_clear
-                {% else %}
-                  /api/camera_proxy/{{ base }}_snapshots_fluent
-                {% endif %}
-              attachment:
-                url: >-
-                  {% set base = sensor_entity | replace('binary_sensor.', 'camera.') | replace('_person', '') | replace('_motion', '') %}
-                  {% if states(base ~ '_snapshots_clear') != 'unknown' %}
-                    /api/camera_proxy/{{ base }}_snapshots_clear
-                  {% else %}
-                    /api/camera_proxy/{{ base }}_snapshots_fluent
-                  {% endif %}
-                content-type: jpeg
-              clickAction: /lovelace
-              actions:
-                - action: "URI"
-                  title: "Open Reolink App"
-                  uri: "app://com.mcu.reolink"
+  - action: "{{ current_action }}"
+    data:
+      title: "Person Detected"
+      message: "Person spotted at {{ states[sensor_entity].name | replace(' Person', '') | replace(' person', '') | replace(' Motion', '') | replace(' motion', '') }}."
+      data:
+        image: >-
+          {% set base = sensor_entity | replace('binary_sensor.', 'camera.') | replace('_person', '') | replace('_motion', '') %}
+          {% if states(base ~ '_snapshots_clear') != 'unknown' %}
+            /api/camera_proxy/{{ base }}_snapshots_clear
+          {% else %}
+            /api/camera_proxy/{{ base }}_snapshots_fluent
+          {% endif %}
+        attachment:
+          url: >-
+            {% set base = sensor_entity | replace('binary_sensor.', 'camera.') | replace('_person', '') | replace('_motion', '') %}
+            {% if states(base ~ '_snapshots_clear') != 'unknown' %}
+              /api/camera_proxy/{{ base }}_snapshots_clear
+            {% else %}
+              /api/camera_proxy/{{ base }}_snapshots_fluent
+            {% endif %}
+          content-type: jpeg
+        clickAction: /lovelace
+        actions:
+          - action: "URI"
+            title: "Open Reolink App"
+            uri: "app://com.mcu.reolink"
