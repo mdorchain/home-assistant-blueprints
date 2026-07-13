@@ -18,7 +18,7 @@
 
 blueprint:
   name: Reolink Camera Person Notification (Modern Notify Engine)
-  description: Fires instantly and terminates. Dynamically resolves target entities to their specific notification action path.
+  description: Fires instantly and terminates. Natively maps the target engine selector to clean notification execution paths.
   domain: automation
   input:
     person_sensor:
@@ -52,7 +52,6 @@ mode: single
 
 variables:
   cooldown: !input cooldown_time
-  targets: !input notification_targets
 
 trigger:
   - platform: state
@@ -68,9 +67,10 @@ condition:
 action:
   - variables:
       sensor_entity: !input person_sensor
-      current_action: "{{ targets.entity_id }}"
 
-  - action: "{{ current_action }}"
+  # Clean fix: Natively maps the target config object directly without risky string manipulation
+  - action: notify.send_message
+    target: !input notification_targets
     data:
       title: "Person Detected"
       message: "Person spotted at {{ states[sensor_entity].name | replace(' Person', '') | replace(' person', '') | replace(' Motion', '') | replace(' motion', '') }}."
