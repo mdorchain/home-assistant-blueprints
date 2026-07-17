@@ -1,12 +1,14 @@
 # -------------------------------------------------------------------
 # Blueprint Metadata
-# Version:       1.12.0
+# Version:       1.14.0
 # Last Updated:  2026-07-17
 # Author:        Michael Dorchain & Assistant
 # Source:        https://github.com/mdorchain/home-assistant-blueprints/
 #
 # Changelog:
 #   1.12.0 (2026-07-17) - Fixed syntax errors on entity variables and restored dynamic fallback logic
+#   1.13.0 (2026-07-17) - Fixed manual override loop by checking trigger source before returning to Auto
+#   1.14.0 (2026-07-17) - Added a configurable minimum duration (default 30 min) for Manual mode
 # -------------------------------------------------------------------
 
 blueprint:
@@ -15,7 +17,7 @@ blueprint:
     Controls a Xiaomi fan based on PM2.5 levels. 
     In "Auto" mode, it uses the Auto PM2.5 thresholds to turn the fan ON/OFF.
     In "Manual" mode, it always sets the favorite speed to your target (e.g., 14).
-    When PM2.5 goes BELOW the manual threshold, it automatically returns the purifier to "Auto" preset mode.
+    When PM2.5 goes BELOW the manual threshold, it automatically returns the purifier to "Auto" preset mode (only if triggered by the sensor and minimum manual time has elapsed).
   domain: automation
   source_url: https://github.com/mdorchain/home-assistant-blueprints/blob/main/blueprints/air-purifier.yaml
 
@@ -89,6 +91,17 @@ blueprint:
           max: 14
           mode: slider
 
+    input_manual_min_duration:
+      name: Manual Mode - Minimum Duration
+      description: The minimum time (in minutes) the fan must remain in Manual mode before being allowed to roll back to Auto.
+      default: 30
+      selector:
+        number:
+          min: 0
+          max: 1440
+          unit_of_measurement: min
+          mode: slider
+
 variables:
   threshold_on: !input input_threshold_on
   threshold_off: !input input_threshold_off
@@ -97,6 +110,7 @@ variables:
   pm25_sensor: !input input_pm25_sensor
   manual_speed: !input input_manual_speed
   speed_level_entity: !input input_speed_level_entity
+  manual_min_duration: !input input_manual_min_duration
 
 trigger:
   # Trigger 1: PM2.5 level changes and stays stable
@@ -163,11 +177,14 @@ action:
             value_template: "{{ state_attr(air_purifier_entity, 'preset_mode') == 'Manual' }}"
         sequence:
           - choose:
-              # If PM2.5 has recovered below the manual threshold -> Return to Auto preset
+              # ONLY drop back to Auto if:
+              # 1. The PM2.5 sensor triggered it
+              # 2. The air is clean (below manual_threshold)
+              # 3. The minimum manual duration has elapsed since the fan's state/attributes were last updated
               - conditions:
                   - condition: template
                     value_template: >
-                      {{ states(pm25_sensor) | is_number and states(pm25_sensor) | float < manual_threshold }}
+                      {{ trigger.id == 'pm25_changed' and states(pm25_sensor) | is_number and states(pm25_sensor) | float < manual_threshold and (now() - states[air_purifier_entity].last_updated).total_seconds() >= (manual_min_duration | float * 60) }}
                 sequence:
                   - service: fan.set_preset_mode
                     target:
@@ -175,7 +192,7 @@ action:
                     data:
                       preset_mode: Auto
             
-            # DEFAULT: If it is still dirty (or just flipped to Manual), instantly enforce manual speed
+            # DEFAULT: If you selected Manual yourself (preset_changed), just force the target speed
             default:
               - service: number.set_value
                 target:
