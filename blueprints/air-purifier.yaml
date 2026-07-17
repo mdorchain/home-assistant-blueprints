@@ -32,7 +32,7 @@ blueprint:
           domain: fan
 
     input_speed_level_entity:
-      name: Speed Level Entity
+      name: Fan Speed Level Entity
       description: The number entity matching your model speed level (e.g., number.zhimi_rmb1_6bce_favorite_level)
       selector:
         entity:
@@ -44,8 +44,8 @@ blueprint:
         entity:
           domain: sensor
 
-    input_threshold_on:
-      name: PM2.5 ON Threshold
+    input_auto_threshold_on:
+      name: Automatic Mode - PM2.5 ON Threshold
       description: Value above which the fan turns ON
       default: 25
       selector:
@@ -55,8 +55,8 @@ blueprint:
           unit_of_measurement: µg/m³
           mode: slider
 
-    input_threshold_off:
-      name: PM2.5 OFF Threshold
+    input_auto_threshold_off:
+      name: Automatic Mode - PM2.5 OFF Threshold
       description: Value below which the fan turns OFF
       default: 15
       selector:
@@ -65,6 +65,13 @@ blueprint:
           max: 500
           unit_of_measurement: µg/m³
           mode: slider
+          
+    input_auto_min_duration:
+      name: Automatic Mode - Trigger Duration
+      description: How long the PM2.5 value must remain stable before triggering
+      default: "00:05:00"
+      selector:
+        duration:
 
     input_manual_threshold:
       name: Manual Mode - PM2.5 Fallback Threshold
@@ -76,16 +83,9 @@ blueprint:
           max: 500
           unit_of_measurement: µg/m³
           mode: slider
-          
-    time_period:
-      name: Trigger Duration
-      description: How long the PM2.5 value must remain stable before triggering
-      default: "00:05:00"
-      selector:
-        duration:
 
     input_manual_speed:
-      name: Manual Mode Speed Value
+      name: Manual Mode - Speed Value
       description: Target value for the favorite level number entity when preset is "Manual"
       default: 14
       selector:
@@ -102,8 +102,8 @@ blueprint:
         duration:
 
 variables:
-  threshold_on: !input input_threshold_on
-  threshold_off: !input input_threshold_off
+  auto_threshold_on: !input input_auto_threshold_on
+  auto_threshold_off: !input input_auto_threshold_off
   manual_threshold: !input input_manual_threshold
   air_purifier_entity: !input input_air_purifier
   pm25_sensor: !input input_pm25_sensor
@@ -115,7 +115,7 @@ trigger:
   # Trigger 1: PM2.5 level changes and stays stable
   - platform: state
     entity_id: !input input_pm25_sensor
-    for: !input time_period
+    for: !input input_auto_min_duration
     id: pm25_changed
 
   # Trigger 2: Fan preset changes to Auto or Manual
@@ -191,7 +191,7 @@ action:
             value_template: >
               {{ state_attr(air_purifier_entity, 'preset_mode') == 'Auto' and
                  states(pm25_sensor) | is_number and
-                 states(pm25_sensor) | float >= threshold_on }}
+                 states(pm25_sensor) | float >= auto_threshold_on }}
         sequence:
           - service: fan.turn_on
             target:
@@ -203,7 +203,7 @@ action:
             value_template: >
               {{ state_attr(air_purifier_entity, 'preset_mode') == 'Auto' and
                  states(pm25_sensor) | is_number and
-                 states(pm25_sensor) | float < threshold_off }}
+                 states(pm25_sensor) | float < auto_threshold_off }}
         sequence:
           - service: fan.turn_off
             target:
