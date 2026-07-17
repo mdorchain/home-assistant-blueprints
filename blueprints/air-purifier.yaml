@@ -10,6 +10,8 @@
 #   1.13.0 (2026-07-17) - Fixed manual override loop by checking trigger source before returning to Auto
 #   1.14.0 (2026-07-17) - Added a configurable minimum duration (default 30 min) for Manual mode
 #   1.15.0 (2026-07-17) - Converted input_manual_min_duration to a clean duration selector
+#   1.16.0 (2026-07-18) - Fixed fan staying off while stuck in Manual mode by adding fan.turn_on
+#                          to the Manual default branch
 # -------------------------------------------------------------------
 
 blueprint:
@@ -124,80 +126,87 @@ trigger:
 
 action:
   - choose:
-      # OPTION 1: Fan is in "Auto" mode
+      # 1) PM2.5 at/above the manual threshold and we're not already in Manual
+      #    -> turn on, switch to Manual, set the target speed
       - conditions:
           - condition: template
-            value_template: "{{ state_attr(air_purifier_entity, 'preset_mode') == 'Auto' }}"
+            value_template: >
+              {{ states(pm25_sensor) | is_number and
+                 states(pm25_sensor) | float >= manual_threshold and
+                 state_attr(air_purifier_entity, 'preset_mode') != 'Manual' }}
         sequence:
-          - choose:
-              # PM2.5 spikes past manual threshold (e.g. 50) -> Drop out of Auto instantly
-              - conditions:
-                  - condition: template
-                    value_template: >
-                      {{ states(pm25_sensor) | is_number and states(pm25_sensor) | float > manual_threshold }}
-                sequence:
-                  - service: fan.turn_on
-                    target:
-                      entity_id: "{{ air_purifier_entity }}"
-                  - service: fan.set_preset_mode
-                    target:
-                      entity_id: "{{ air_purifier_entity }}"
-                    data:
-                      preset_mode: Manual
-                  - service: number.set_value
-                    target:
-                      entity_id: "{{ speed_level_entity }}"
-                    data:
-                      value: "{{ manual_speed }}"
-              # PM2.5 crosses normal Auto ON threshold -> Turn ON
-              - conditions:
-                  - condition: template
-                    value_template: >
-                      {{ states(pm25_sensor) | is_number and states(pm25_sensor) | float > threshold_on }}
-                sequence:
-                  - service: fan.turn_on
-                    target:
-                      entity_id: "{{ air_purifier_entity }}"
-              # PM2.5 crosses normal Auto OFF threshold -> Turn OFF
-              - conditions:
-                  - condition: template
-                    value_template: >
-                      {{ states(pm25_sensor) | is_number and states(pm25_sensor) | float < threshold_off }}
-                sequence:
-                  - service: fan.turn_off
-                    target:
-                      entity_id: "{{ air_purifier_entity }}"
+          - service: fan.turn_on
+            target:
+              entity_id: "{{ air_purifier_entity }}"
+          - service: fan.set_preset_mode
+            target:
+              entity_id: "{{ air_purifier_entity }}"
+            data:
+              preset_mode: Manual
+          - service: number.set_value
+            target:
+              entity_id: "{{ speed_level_entity }}"
+            data:
+              value: "{{ manual_speed }}"
 
-      # OPTION 2: Fan is in "Manual" mode
+      # 2) Preset was just switched to Manual by you (via app/device), not by this automation
+      #    -> make sure the fan is actually on and running at the target speed
       - conditions:
           - condition: template
-            value_template: "{{ state_attr(air_purifier_entity, 'preset_mode') == 'Manual' }}"
+            value_template: >
+              {{ trigger.id == 'preset_changed' and
+                 state_attr(air_purifier_entity, 'preset_mode') == 'Manual' }}
         sequence:
-          - choose:
-              # ONLY drop back to Auto if:
-              # 1. The PM2.5 sensor triggered it
-              # 2. The air is clean (below manual_threshold)
-              # 3. The minimum manual duration has elapsed since the fan's state/attributes were last updated
-              - conditions:
-                  - condition: template
-                    value_template: >
-                      {{ trigger.id == 'pm25_changed' and 
-                         states(pm25_sensor) | is_number and 
-                         states(pm25_sensor) | float < manual_threshold and
-                         (now() - states[air_purifier_entity].last_updated).total_seconds() >= as_timedelta(manual_min_duration).total_seconds() }}
-                sequence:
-                  - service: fan.set_preset_mode
-                    target:
-                      entity_id: "{{ air_purifier_entity }}"
-                    data:
-                      preset_mode: Auto
-            
-            # DEFAULT: If you selected Manual yourself (preset_changed), just force the target speed
-            default:
-              - service: number.set_value
-                target:
-                  entity_id: "{{ speed_level_entity }}"
-                data:
-                  value: "{{ manual_speed }}"
+          - service: fan.turn_on
+            target:
+              entity_id: "{{ air_purifier_entity }}"
+          - service: number.set_value
+            target:
+              entity_id: "{{ speed_level_entity }}"
+            data:
+              value: "{{ manual_speed }}"
+
+      # 3) In Manual, PM2.5 has dropped back below the manual threshold, and Manual mode
+      #    has been held for at least manual_min_duration -> fall back to Auto.
+      #    (Gated on trigger.id == 'pm25_changed' so this doesn't fire off of our own
+      #    fan.set_preset_mode / number.set_value calls above.)
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ trigger.id == 'pm25_changed' and
+                 state_attr(air_purifier_entity, 'preset_mode') == 'Manual' and
+                 states(pm25_sensor) | is_number and
+                 states(pm25_sensor) | float < manual_threshold and
+                 (now() - states[air_purifier_entity].last_updated).total_seconds() >= as_timedelta(manual_min_duration).total_seconds() }}
+        sequence:
+          - service: fan.set_preset_mode
+            target:
+              entity_id: "{{ air_purifier_entity }}"
+            data:
+              preset_mode: Auto
+
+      # 4) In Auto, PM2.5 at/above the ON threshold -> turn on
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ state_attr(air_purifier_entity, 'preset_mode') == 'Auto' and
+                 states(pm25_sensor) | is_number and
+                 states(pm25_sensor) | float >= threshold_on }}
+        sequence:
+          - service: fan.turn_on
+            target:
+              entity_id: "{{ air_purifier_entity }}"
+
+      # 5) In Auto, PM2.5 below the OFF threshold -> turn off
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ state_attr(air_purifier_entity, 'preset_mode') == 'Auto' and
+                 states(pm25_sensor) | is_number and
+                 states(pm25_sensor) | float < threshold_off }}
+        sequence:
+          - service: fan.turn_off
+            target:
+              entity_id: "{{ air_purifier_entity }}"
 
 mode: single
