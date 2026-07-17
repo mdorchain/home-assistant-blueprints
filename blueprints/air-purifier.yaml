@@ -1,21 +1,21 @@
 # -------------------------------------------------------------------
 # Blueprint Metadata
-# Version:       1.6.0
-# Last Updated: 2026-06-23
-# Author:        Michael Dorchain
+# Version:       1.12.0
+# Last Updated:  2026-07-17
+# Author:        Michael Dorchain & Assistant
 # Source:        https://github.com/mdorchain/home-assistant-blueprints/
 #
 # Changelog:
-#   1.6.0 (2026-06-23) - Adjusted target preset back to "Manual" for Xiaomi number control
-#   1.5.0 (2026-06-23) - Tailored for Xiaomi Favorite Level entities (0-14 scale)
-#   1.4.0 (2026-06-23) - Added fallback action to lock speed to 14% if in Manual preset
+#   1.12.0 (2026-07-17) - Fixed syntax errors on entity variables and restored dynamic fallback logic
 # -------------------------------------------------------------------
 
 blueprint:
   name: 🌫️ Xiaomi Air Purifier Control
   description: >
-    Controls a Xiaomi fan based on PM2.5 levels when set to "Auto". 
-    If the preset is set to "Manual", it forces your Xiaomi favorite level number entity to 14.
+    Controls a Xiaomi fan based on PM2.5 levels. 
+    In "Auto" mode, it uses the Auto PM2.5 thresholds to turn the fan ON/OFF.
+    In "Manual" mode, it always sets the favorite speed to your target (e.g., 14).
+    When PM2.5 goes BELOW the manual threshold, it automatically returns the purifier to "Auto" preset mode.
   domain: automation
   source_url: https://github.com/mdorchain/home-assistant-blueprints/blob/main/blueprints/air-purifier.yaml
 
@@ -26,9 +26,9 @@ blueprint:
         entity:
           domain: fan
 
-    input_favorite_level_number:
-      name: Xiaomi Favorite Level Number Entity
-      description: The number entity matching your model (e.g., number.zhimi_rmb1_6bce_favorite_level)
+    input_speed_level_entity:
+      name: Speed Level Entity
+      description: The number entity matching your model speed level (e.g., number.zhimi_rmb1_6bce_favorite_level)
       selector:
         entity:
           domain: number
@@ -60,6 +60,17 @@ blueprint:
           max: 500
           unit_of_measurement: µg/m³
           mode: slider
+
+    input_manual_threshold:
+      name: Manual Mode - PM2.5 Fallback Threshold
+      description: Value below which the fan returns to Auto mode.
+      default: 50
+      selector:
+        number:
+          min: 0
+          max: 500
+          unit_of_measurement: µg/m³
+          mode: slider
           
     time_period:
       name: Trigger Duration
@@ -69,22 +80,23 @@ blueprint:
         duration:
 
     input_manual_speed:
-      name: Xiaomi Favorite Level Value
+      name: Manual Mode Speed Value
       description: Target value for the favorite level number entity when preset is "Manual"
       default: 14
       selector:
         number:
           min: 0
           max: 14
-          mode: box
+          mode: slider
 
 variables:
   threshold_on: !input input_threshold_on
   threshold_off: !input input_threshold_off
-  air_purifier: !input input_air_purifier
-  favorite_level_entity: !input input_favorite_level_number
+  manual_threshold: !input input_manual_threshold
+  air_purifier_entity: !input input_air_purifier
   pm25_sensor: !input input_pm25_sensor
   manual_speed: !input input_manual_speed
+  speed_level_entity: !input input_speed_level_entity
 
 trigger:
   # Trigger 1: PM2.5 level changes and stays stable
@@ -101,12 +113,32 @@ trigger:
 
 action:
   - choose:
-      # OPTION 1: Fan is in "Auto" mode -> Run normal PM2.5 automated automation
+      # OPTION 1: Fan is in "Auto" mode
       - conditions:
           - condition: template
-            value_template: "{{ state_attr(air_purifier, 'preset_mode') == 'Auto' }}"
+            value_template: "{{ state_attr(air_purifier_entity, 'preset_mode') == 'Auto' }}"
         sequence:
           - choose:
+              # PM2.5 spikes past manual threshold (e.g. 50) -> Drop out of Auto instantly
+              - conditions:
+                  - condition: template
+                    value_template: >
+                      {{ states(pm25_sensor) | is_number and states(pm25_sensor) | float > manual_threshold }}
+                sequence:
+                  - service: fan.turn_on
+                    target:
+                      entity_id: "{{ air_purifier_entity }}"
+                  - service: fan.set_preset_mode
+                    target:
+                      entity_id: "{{ air_purifier_entity }}"
+                    data:
+                      preset_mode: Manual
+                  - service: number.set_value
+                    target:
+                      entity_id: "{{ speed_level_entity }}"
+                    data:
+                      value: "{{ manual_speed }}"
+              # PM2.5 crosses normal Auto ON threshold -> Turn ON
               - conditions:
                   - condition: template
                     value_template: >
@@ -114,7 +146,8 @@ action:
                 sequence:
                   - service: fan.turn_on
                     target:
-                      entity_id: !input input_air_purifier
+                      entity_id: "{{ air_purifier_entity }}"
+              # PM2.5 crosses normal Auto OFF threshold -> Turn OFF
               - conditions:
                   - condition: template
                     value_template: >
@@ -122,17 +155,32 @@ action:
                 sequence:
                   - service: fan.turn_off
                     target:
-                      entity_id: !input input_air_purifier
+                      entity_id: "{{ air_purifier_entity }}"
 
-      # OPTION 2: Fan is in "Manual" mode -> Set the number entity to 14
+      # OPTION 2: Fan is in "Manual" mode
       - conditions:
           - condition: template
-            value_template: "{{ state_attr(air_purifier, 'preset_mode') == 'Manual' }}"
+            value_template: "{{ state_attr(air_purifier_entity, 'preset_mode') == 'Manual' }}"
         sequence:
-          - service: number.set_value
-            target:
-              entity_id: !input input_favorite_level_number
-            data:
-              value: "{{ manual_speed }}"
+          - choose:
+              # If PM2.5 has recovered below the manual threshold -> Return to Auto preset
+              - conditions:
+                  - condition: template
+                    value_template: >
+                      {{ states(pm25_sensor) | is_number and states(pm25_sensor) | float < manual_threshold }}
+                sequence:
+                  - service: fan.set_preset_mode
+                    target:
+                      entity_id: "{{ air_purifier_entity }}"
+                    data:
+                      preset_mode: Auto
+            
+            # DEFAULT: If it is still dirty (or just flipped to Manual), instantly enforce manual speed
+            default:
+              - service: number.set_value
+                target:
+                  entity_id: "{{ speed_level_entity }}"
+                data:
+                  value: "{{ manual_speed }}"
 
 mode: single
