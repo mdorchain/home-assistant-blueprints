@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------
 # Blueprint Metadata
-# Version:       1.14.0
+# Version:       1.15.0
 # Last Updated:  2026-07-17
 # Author:        Michael Dorchain & Assistant
 # Source:        https://github.com/mdorchain/home-assistant-blueprints/
@@ -9,6 +9,7 @@
 #   1.12.0 (2026-07-17) - Fixed syntax errors on entity variables and restored dynamic fallback logic
 #   1.13.0 (2026-07-17) - Fixed manual override loop by checking trigger source before returning to Auto
 #   1.14.0 (2026-07-17) - Added a configurable minimum duration (default 30 min) for Manual mode
+#   1.15.0 (2026-07-17) - Converted input_manual_min_duration to a clean duration selector
 # -------------------------------------------------------------------
 
 blueprint:
@@ -93,14 +94,10 @@ blueprint:
 
     input_manual_min_duration:
       name: Manual Mode - Minimum Duration
-      description: The minimum time (in minutes) the fan must remain in Manual mode before being allowed to roll back to Auto.
-      default: 30
+      description: The minimum time the fan must remain in Manual mode before being allowed to roll back to Auto.
+      default: "00:30:00"
       selector:
-        number:
-          min: 0
-          max: 1440
-          unit_of_measurement: min
-          mode: slider
+        duration:
 
 variables:
   threshold_on: !input input_threshold_on
@@ -184,7 +181,10 @@ action:
               - conditions:
                   - condition: template
                     value_template: >
-                      {{ trigger.id == 'pm25_changed' and states(pm25_sensor) | is_number and states(pm25_sensor) | float < manual_threshold and (now() - states[air_purifier_entity].last_updated).total_seconds() >= (manual_min_duration | float * 60) }}
+                      {{ trigger.id == 'pm25_changed' and 
+                         states(pm25_sensor) | is_number and 
+                         states(pm25_sensor) | float < manual_threshold and
+                         (now() - states[air_purifier_entity].last_updated).total_seconds() >= as_timedelta(manual_min_duration).total_seconds() }}
                 sequence:
                   - service: fan.set_preset_mode
                     target:
