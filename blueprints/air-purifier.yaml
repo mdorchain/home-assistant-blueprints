@@ -51,7 +51,7 @@ blueprint:
       selector:
         number:
           min: 0
-          max: 500
+          max: 100
           unit_of_measurement: µg/m³
           mode: slider
 
@@ -62,7 +62,7 @@ blueprint:
       selector:
         number:
           min: 0
-          max: 500
+          max: 100
           unit_of_measurement: µg/m³
           mode: slider
           
@@ -80,7 +80,7 @@ blueprint:
       selector:
         number:
           min: 0
-          max: 500
+          max: 100
           unit_of_measurement: µg/m³
           mode: slider
 
