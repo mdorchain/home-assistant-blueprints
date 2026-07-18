@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------
 # Blueprint Metadata
-# Version:       2.1.0
+# Version:       2.2.0
 # Last Updated:  2026-07-18
 # Author:        Michael Dorchain & Assistant
 # Source:        https://github.com/mdorchain/home-assistant-blueprints/
@@ -18,6 +18,12 @@
 #                          must stay ON before it's allowed to auto-turn-off" (tracked via the
 #                          fan's on/off last_changed timestamp), instead of a trigger stability
 #                          window. Auto ON reacts immediately; only Auto OFF is duration-gated.
+#   2.2.0  (2026-07-18) - Replaced the last_changed/last_updated Jinja duration math with
+#                          native HA `condition: state ... for:` checks (on preset_mode for
+#                          Manual, on the main state for Auto). No helper entity needed; the
+#                          'for' timer is tracked by HA's own state engine and only resets
+#                          when the specific state/attribute being watched actually changes -
+#                          fully immune to unrelated attribute noise.
 # -------------------------------------------------------------------
 
 blueprint:
@@ -110,13 +116,11 @@ blueprint:
 variables:
   auto_threshold_on: !input input_auto_threshold_on
   auto_threshold_off: !input input_auto_threshold_off
-  auto_min_duration: !input input_auto_min_duration
   manual_threshold: !input input_manual_threshold
   air_purifier_entity: !input input_air_purifier
   pm25_sensor: !input input_pm25_sensor
   manual_speed: !input input_manual_speed
   speed_level_entity: !input input_speed_level_entity
-  manual_min_duration: !input input_manual_min_duration
 
 trigger:
   # Trigger 1: PM2.5 sensor reports a new value
@@ -172,18 +176,23 @@ action:
             data:
               value: "{{ manual_speed }}"
 
-      # 3) In Manual, PM2.5 has dropped back below the manual threshold, and Manual mode
-      #    has been held for at least manual_min_duration -> fall back to Auto.
+      # 3) In Manual, PM2.5 has dropped back below the manual threshold, and preset_mode has
+      #    held at Manual continuously for at least manual_min_duration -> fall back to Auto.
       #    (Gated on trigger.id == 'pm25_changed' so this doesn't fire off of our own
-      #    fan.set_preset_mode / number.set_value calls above.)
+      #    fan.set_preset_mode / number.set_value calls above. The 'for' condition on the
+      #    preset_mode attribute is tracked natively by HA's state engine - it only resets
+      #    when preset_mode itself changes, so it's immune to unrelated attribute noise.)
       - conditions:
           - condition: template
             value_template: >
               {{ trigger.id == 'pm25_changed' and
-                 state_attr(air_purifier_entity, 'preset_mode') == 'Manual' and
                  states(pm25_sensor) | is_number and
-                 states(pm25_sensor) | float < manual_threshold | float and
-                 (now() - states[air_purifier_entity].last_updated).total_seconds() >= as_timedelta(manual_min_duration).total_seconds() }}
+                 states(pm25_sensor) | float < manual_threshold | float }}
+          - condition: state
+            entity_id: !input input_air_purifier
+            attribute: preset_mode
+            state: "Manual"
+            for: !input input_manual_min_duration
         sequence:
           - service: fan.set_preset_mode
             target:
@@ -203,17 +212,18 @@ action:
             target:
               entity_id: "{{ air_purifier_entity }}"
 
-      # 5) In Auto, PM2.5 below the OFF threshold, the fan is currently on, and it has been
-      #    on for at least auto_min_duration -> turn off. (last_changed tracks the fan's
-      #    on/off state specifically, so it isn't reset by unrelated attribute updates.)
+      # 5) In Auto, PM2.5 below the OFF threshold, and the fan has held state 'on'
+      #    continuously for at least auto_min_duration -> turn off.
       - conditions:
           - condition: template
             value_template: >
               {{ state_attr(air_purifier_entity, 'preset_mode') == 'Auto' and
-                 is_state(air_purifier_entity, 'on') and
                  states(pm25_sensor) | is_number and
-                 states(pm25_sensor) | float < auto_threshold_off | float and
-                 (now() - states[air_purifier_entity].last_changed).total_seconds() >= as_timedelta(auto_min_duration).total_seconds() }}
+                 states(pm25_sensor) | float < auto_threshold_off | float }}
+          - condition: state
+            entity_id: !input input_air_purifier
+            state: "on"
+            for: !input input_auto_min_duration
         sequence:
           - service: fan.turn_off
             target:
