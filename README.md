@@ -18,3 +18,9 @@
 - Send a push notification when a person is detected
 
 [![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/mdorchain/home-assistant-blueprints/refs/heads/main/blueprints/reolink-notifications.yaml)
+
+### 🌫️ Sonoff ZNZB-01P with ZHA
+
+- Handle click, double click and long press on Sonoff ZNZB-01P
+
+[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/mdorchain/home-assistant-blueprints/refs/heads/main/blueprints/sonoff-ZNZB-01P.yaml)
