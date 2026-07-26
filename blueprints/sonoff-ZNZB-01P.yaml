@@ -1,3 +1,14 @@
+# -------------------------------------------------------------------
+# Blueprint Metadata
+# Version:       1.0.0
+# Last Updated:  2026-07-26
+# Author:        Michael Dorchain & Assistant
+# Source:        https://github.com/mdorchain/home-assistant-blueprints/
+#
+# Changelog:
+#   1.0.0 - initital release
+# -------------------------------------------------------------------
+
 blueprint:
   name: Sonoff Zigbee wireless Button SNZB-01P
   description: Setup actions for three functions of the SONOFF Zigbee button with single press, double press, and long press.
@@ -8,9 +19,7 @@ blueprint:
       description: The button to configure.
       selector:
         device:
-          manufacturer: 
-          - SONOFF
-          - eWeLink
+          manufacturer: ["SONOFF", "eWeLink"]
           multiple: false
     press_action:
       name: Press Action
