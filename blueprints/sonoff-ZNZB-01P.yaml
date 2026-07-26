@@ -19,9 +19,9 @@ blueprint:
       description: The button to configure.
       selector:
         device:
-          manufacturer: 
-            - SONOFF
-            - eWeLink
+          filter:
+            - manufacturer: SONOFF
+            - manufacturer: eWeLink
           multiple: false
     press_action:
       name: Press Action
