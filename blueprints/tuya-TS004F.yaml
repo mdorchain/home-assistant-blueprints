@@ -19,9 +19,10 @@ blueprint:
       description: Tuya TS004F 4-Button Switch to use
       selector:
         device:
-          integration: zha
-          manufacturer: _TZ3000_xabckq1v
-          model: TS004F
+          filter:
+            - manufacturer: Tuya
+            - manufacturer: _TZ3000_xabckq1v
+          multiple: false
     button_1_click:
       name: Button 1 click
       description: Action to run on button upper-left single press
