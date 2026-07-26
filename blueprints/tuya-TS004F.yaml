@@ -67,7 +67,7 @@ blueprint:
         action: {}
     button_3_double_click:
       name: Button 3 double-click
-      description: Action to run on button lower-right double press
+      description: Action to run on button lower-left double press
       default: []
       selector:
         action: {}
