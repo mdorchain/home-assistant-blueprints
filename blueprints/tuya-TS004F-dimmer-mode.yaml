@@ -77,7 +77,10 @@ action:
           - '{{ command == "attribute_updated" }}'
           - '{{ trigger.event.data.args.attribute_name == "on_off" }}'
           - '{{ trigger.event.data.args.value == 1 }}'
-        sequence: !input 'button_1_click'
+        sequence:
+          - sequence: !input 'button_1_click'
+          - delay:
+              milliseconds: 300
 
       # Bottom-Left - Turn Off (cluster 6, on_off attribute = 0)
       - conditions:
@@ -85,21 +88,30 @@ action:
           - '{{ command == "attribute_updated" }}'
           - '{{ trigger.event.data.args.attribute_name == "on_off" }}'
           - '{{ trigger.event.data.args.value == 0 }}'
-        sequence: !input 'button_4_click'
+        sequence:
+          - sequence: !input 'button_4_click'
+          - delay:
+              milliseconds: 300
 
       # Top-Right - Dim Up short press (cluster 8, step, step_mode 0)
       - conditions:
           - '{{ cluster_id == 8 }}'
           - '{{ command == "step" }}'
           - '{{ trigger.event.data.params.step_mode == 0 }}'
-        sequence: !input 'button_2_click'
+        sequence:
+          - sequence: !input 'button_2_click'
+          - delay:
+              milliseconds: 300
 
       # Bottom-Right - Dim Down short press (cluster 8, step, step_mode 1)
       - conditions:
           - '{{ cluster_id == 8 }}'
           - '{{ command == "step" }}'
           - '{{ trigger.event.data.params.step_mode == 1 }}'
-        sequence: !input 'button_3_click'
+        sequence:
+          - sequence: !input 'button_3_click'
+          - delay:
+              milliseconds: 300
 
       # Top-Right - Dim Up hold (cluster 8, move, move_mode 0)
       - conditions:
