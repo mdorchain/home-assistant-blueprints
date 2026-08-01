@@ -70,8 +70,6 @@ action:
   - variables:
       cluster_id: '{{ trigger.event.data.cluster_id }}'
       command: '{{ trigger.event.data.command }}'
-      params: '{{ trigger.event.data.params }}'
-      args: '{{ trigger.event.data.args }}'
   - choose:
       # Top-Left - Turn On (cluster 6, on_off attribute = 1)
       - conditions:
@@ -93,28 +91,28 @@ action:
       - conditions:
           - '{{ cluster_id == 8 }}'
           - '{{ command == "step" }}'
-          - '{{ params.step_mode == 0 }}'
+          - '{{ trigger.event.data.params.step_mode == 0 }}'
         sequence: !input 'button_2_click'
 
       # Bottom-Right - Dim Down short press (cluster 8, step, step_mode 1)
       - conditions:
           - '{{ cluster_id == 8 }}'
           - '{{ command == "step" }}'
-          - '{{ params.step_mode == 1 }}'
+          - '{{ trigger.event.data.params.step_mode == 1 }}'
         sequence: !input 'button_3_click'
 
       # Top-Right - Dim Up hold (cluster 8, move, move_mode 0)
       - conditions:
           - '{{ cluster_id == 8 }}'
           - '{{ command == "move" }}'
-          - '{{ params.move_mode == 0 }}'
+          - '{{ trigger.event.data.params.move_mode == 0 }}'
         sequence: !input 'button_2_hold'
 
       # Bottom-Right - Dim Down hold (cluster 8, move, move_mode 1)
       - conditions:
           - '{{ cluster_id == 8 }}'
           - '{{ command == "move" }}'
-          - '{{ params.move_mode == 1 }}'
+          - '{{ trigger.event.data.params.move_mode == 1 }}'
         sequence: !input 'button_3_hold'
 
       # Stop (cluster 8, stop) - fired on release after a hold.
