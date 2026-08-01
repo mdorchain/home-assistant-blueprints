@@ -3,8 +3,9 @@ blueprint:
   description: >
     Automate your Tuya TS004F 4-Button Switch (manufacturer _TZ3000_xabckq1v
     and similar) using ZHA events, matched against this device's actual
-    single-endpoint "dimmer mode" behavior: Button 1 = On, Button 4 = Off,
-    Button 2 = Dim Up, Button 3 = Dim Down (with hold-to-dim and stop-on-release).
+    single-endpoint "dimmer mode" behavior: Top-Left = On, Bottom-Left = Off,
+    Top-Right = Dim Up, Bottom-Right = Dim Down (with hold-to-dim and
+    stop-on-release).
   domain: automation
   input:
     tuya_switch:
@@ -13,46 +14,45 @@ blueprint:
       selector:
         device:
           filter:
-            - manufacturer: Tuya
             - manufacturer: _TZ3000_xabckq1v
           multiple: false
     button_1_click:
-      name: Button 1 (top-left) - Turn On
+      name: Top-Left - Turn On
       default: []
       selector:
         action: {}
     button_2_click:
-      name: Button 2 (top-right) - Dim Up (short press)
+      name: Top-Right - Dim Up (short press)
       default: []
       selector:
         action: {}
     button_2_hold:
-      name: Button 2 (top-right) - Dim Up (hold, repeats while held)
+      name: Top-Right - Dim Up (hold, repeats while held)
       default: []
       selector:
         action: {}
     button_2_release:
-      name: Button 2 (top-right) - Released after hold
+      name: Top-Right - Released after hold
       default: []
       selector:
         action: {}
     button_3_click:
-      name: Button 3 (bottom-left) - Dim Down (short press)
+      name: Bottom-Right - Dim Down (short press)
       default: []
       selector:
         action: {}
     button_3_hold:
-      name: Button 3 (bottom-left) - Dim Down (hold, repeats while held)
+      name: Bottom-Right - Dim Down (hold, repeats while held)
       default: []
       selector:
         action: {}
     button_3_release:
-      name: Button 3 (bottom-left) - Released after hold
+      name: Bottom-Right - Released after hold
       default: []
       selector:
         action: {}
     button_4_click:
-      name: Button 4 (bottom-right) - Turn Off
+      name: Bottom-Left - Turn Off
       default: []
       selector:
         action: {}
@@ -73,7 +73,7 @@ action:
       params: '{{ trigger.event.data.params }}'
       args: '{{ trigger.event.data.args }}'
   - choose:
-      # Button 1 - Turn On (cluster 6, on_off attribute = 1)
+      # Top-Left - Turn On (cluster 6, on_off attribute = 1)
       - conditions:
           - '{{ cluster_id == 6 }}'
           - '{{ command == "attribute_updated" }}'
@@ -81,7 +81,7 @@ action:
           - '{{ trigger.event.data.args.value == 1 }}'
         sequence: !input 'button_1_click'
 
-      # Button 4 - Turn Off (cluster 6, on_off attribute = 0)
+      # Bottom-Left - Turn Off (cluster 6, on_off attribute = 0)
       - conditions:
           - '{{ cluster_id == 6 }}'
           - '{{ command == "attribute_updated" }}'
@@ -89,28 +89,28 @@ action:
           - '{{ trigger.event.data.args.value == 0 }}'
         sequence: !input 'button_4_click'
 
-      # Button 2 - Dim Up short press (cluster 8, step, step_mode 0)
+      # Top-Right - Dim Up short press (cluster 8, step, step_mode 0)
       - conditions:
           - '{{ cluster_id == 8 }}'
           - '{{ command == "step" }}'
           - '{{ params.step_mode == 0 }}'
         sequence: !input 'button_2_click'
 
-      # Button 3 - Dim Down short press (cluster 8, step, step_mode 1)
+      # Bottom-Right - Dim Down short press (cluster 8, step, step_mode 1)
       - conditions:
           - '{{ cluster_id == 8 }}'
           - '{{ command == "step" }}'
           - '{{ params.step_mode == 1 }}'
         sequence: !input 'button_3_click'
 
-      # Button 2 - Dim Up hold (cluster 8, move, move_mode 0)
+      # Top-Right - Dim Up hold (cluster 8, move, move_mode 0)
       - conditions:
           - '{{ cluster_id == 8 }}'
           - '{{ command == "move" }}'
           - '{{ params.move_mode == 0 }}'
         sequence: !input 'button_2_hold'
 
-      # Button 3 - Dim Down hold (cluster 8, move, move_mode 1)
+      # Bottom-Right - Dim Down hold (cluster 8, move, move_mode 1)
       - conditions:
           - '{{ cluster_id == 8 }}'
           - '{{ command == "move" }}'
