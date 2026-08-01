@@ -33,5 +33,4 @@
 
 - Tuya TS004F in dimmer mode
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/mdorchain/home-assistant-blueprints/refs/heads/main/blueprints/
-tuya-TS004F-dimmer-mode.yaml)
+[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/mdorchain/home-assistant-blueprints/refs/heads/main/blueprints/tuya-TS004F-dimmer-mode.yaml)
