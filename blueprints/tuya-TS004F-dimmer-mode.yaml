@@ -14,6 +14,7 @@ blueprint:
         device:
           filter:
             - manufacturer: Tuya
+            - manufacturer: _TZ3000_xabckq1v
           multiple: false
     button_1_click:
       name: Button 1 (top-left) - Turn On
