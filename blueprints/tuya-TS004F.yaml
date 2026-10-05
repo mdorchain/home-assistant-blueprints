@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------
 # Blueprint
-# Version:        1.0.1
+# Version:        1.0.2
 # Last Updated:   2026-10-05
 # Author:         Michael Dorchain
 # Source:         https://github.com/mdorchain/home-assistant-blueprints/
@@ -8,6 +8,7 @@
 # Changelog:
 #   1.0.0 - initital release
 #   1.0.1 - Compatibility fixes for Home Assistant 2026.10.0
+#   1.0.2 - Switch back to command mode
 # -------------------------------------------------------------------
 
 blueprint:
