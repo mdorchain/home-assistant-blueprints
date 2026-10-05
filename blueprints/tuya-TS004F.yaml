@@ -32,68 +32,32 @@ blueprint:
       default: []
       selector:
         action: {}
-    button_1_double_click:
-      name: Button 1 double-click
-      description: Action to run on button upper-left double press
-      default: []
-      selector:
-        action: {}
-    button_1_long_press:
-      name: Button 1 long press
-      description: Action to run on button upper-left long press
-      default: []
-      selector:
-        action: {}
     button_2_click:
       name: Button 2 click
       description: Action to run on button upper-right single press
       default: []
       selector:
         action: {}
-    button_2_double_click:
-      name: Button 2 double-click
-      description: Action to run on button upper-right double press
-      default: []
-      selector:
-        action: {}
     button_2_long_press:
-      name: Button 2 long press
+      name: Button 2 - Long Press Dim-Up
       description: Action to run on button upper-right long press
       default: []
       selector:
         action: {}
     button_3_click:
-      name: Button 3 click
+      name: Button 3 - Click
       description: Action to run on button lower-left single press
       default: []
       selector:
         action: {}
-    button_3_double_click:
-      name: Button 3 double-click
-      description: Action to run on button lower-left double press
-      default: []
-      selector:
-        action: {}
-    button_3_long_press:
-      name: Button 3 long press
-      description: Action to run on button lower-left long press
-      default: []
-      selector:
-        action: {}
     button_4_click:
-      name: Button 4 click
+      name: Button 4 - Click
       description: Action to run on button lower-right single press
       default: []
       selector:
         action: {}
-    button_4_double_click:
-      name: Button 4 double-click
-      description: Action to run on button lower-right double press
-      default: []
-      selector:
-        action: {}
     button_4_long_press:
-      name: Long Press Dim-down
+      name: Button 4 - Long Press Dim-Down
       description: Action to run on button lower-right long press
       default: []
       selector:
@@ -108,37 +72,39 @@ trigger:
 action:
 - variables:
     command: '{{ trigger.event.data.command }}'
-    endpoint_id: '{{ trigger.event.data.endpoint_id }}'
+    attribute_name: '{{ trigger.event.data.args.attribute_name }}'
+    attribute_value: '{{ trigger.event.data.args.value }}'
+    step_mode: '{{ trigger.event.data.params.step_mode }}'
+    move_mode: '{{ trigger.event.data.params.move_mode }}'
 - choose:
-  - conditions: '{{ false }}'
+  - conditions: '{{ true }}'
     sequence:
         - service: notify.persistent_notification
           data:
-            message: '{{ endpoint_id }}'
+            message: 'attribute_name: {{ attribute_name }}, step_mode: {{ step_mode }}'
             title: '{{ command }}'
-  - conditions: '{{ command == ''remote_button_short_press'' }}'
+  - conditions: '{{ command == ''step'' }}'
     sequence:
     - choose:
-      - conditions: '{{ endpoint_id == 1 }}'
-        sequence: !input 'button_1_click'
-      - conditions: '{{ endpoint_id == 2 }}'
+      - conditions: '{{ step_mode == 0 }}'
         sequence: !input 'button_2_click'
-      - conditions: '{{ endpoint_id == 3 }}'
-        sequence: !input 'button_3_click'
-      - conditions: '{{ endpoint_id == 4 }}'
+      - conditions: '{{ step_mode == 1 }}'
         sequence: !input 'button_4_click'
-  - conditions: '{{ command == ''remote_button_double_press'' }}'
+  - conditions: '{{ command == ''move'' }}'
     sequence:
     - choose:
-      - conditions: '{{ endpoint_id == 1 }}'
-        sequence: !input 'button_1_double_click'
-      - conditions: '{{ endpoint_id == 2 }}'
-        sequence: !input 'button_2_double_click'
-      - conditions: '{{ endpoint_id == 3 }}'
-        sequence: !input 'button_3_double_click'
-      - conditions: '{{ endpoint_id == 4 }}'
-        sequence: !input 'button_4_double_click'
-  - conditions: '{{ command == ''remote_button_long_press'' }}'
+      - conditions: '{{ move_mode == 0 }}'
+        sequence: !input 'button_2_long_press'
+      - conditions: '{{ move_mode == 1 }}'
+        sequence: !input 'button_4_long_press'
+  - conditions: '{{ command == ''attribute_updated'' }}'
+    sequence:
+    - choose:
+      - conditions: '{{ attribute_name == ''on_off'' and attribute_value == 0 }}'
+        sequence: !input 'button_3_click'
+      - conditions: '{{ attribute_name == ''on_off'' and attribute_value == 1 }}'
+        sequence: !input 'button_1_click'
+
     sequence:
     - choose:
       - conditions: '{{ endpoint_id == 1 }}'
