@@ -62,30 +62,12 @@ action:
   - variables:
       debug: !input debug
       command: "{{ trigger.event.data.command }}"
-      args: "{{ trigger.event.data.args }}"
-      params: "{{ trigger.event.data.params }}"
-      step_raw: >-
-        {% if params is mapping and params.get('step_mode') is not none -%}
-          {{ params.get('step_mode') }}
-        {%- elif args is mapping and args.get('step_mode') is not none -%}
-          {{ args.get('step_mode') }}
-        {%- elif args is not mapping and args is not string and args | length > 0 -%}
-          {{ args[0] }}
-        {%- endif %}
-      move_raw: >-
-        {% if params is mapping and params.get('move_mode') is not none -%}
-          {{ params.get('move_mode') }}
-        {%- elif args is mapping and args.get('move_mode') is not none -%}
-          {{ args.get('move_mode') }}
-        {%- elif args is not mapping and args is not string and args | length > 0 -%}
-          {{ args[0] }}
-        {%- endif %}
-      step_dir: >-
-        {% set s = step_raw | string %}
-        {{ 'up' if ('Up' in s or s.strip() == '0') else 'down' if ('Down' in s or s.strip() == '1') else '' }}
-      move_dir: >-
-        {% set s = move_raw | string %}
-        {{ 'up' if ('Up' in s or s.strip() == '0') else 'down' if ('Down' in s or s.strip() == '1') else '' }}
+      step_val: "{{ trigger.event.data.params.step_mode | default(-1, true) | int(-1) }}"
+      move_val: "{{ trigger.event.data.params.move_mode | default(-1, true) | int(-1) }}"
+      attr_name: "{{ trigger.event.data.args.attribute_name | default('', true) }}"
+      attr_on: >-
+        {% set v = trigger.event.data.args.value | default('', true) | string | lower %}
+        {{ 'true' if ('true' in v or v.strip() == '1') else 'false' if ('false' in v or v.strip() == '0') else '' }}
 
   - if:
       - condition: template
@@ -96,27 +78,24 @@ action:
           title: "Tuya TS004F: {{ command }}"
           message: >-
             command: {{ command }},
-            step_dir: {{ step_dir }},
-            move_dir: {{ move_dir }},
-            args: {{ args }},
-            params: {{ params }}
+            step_val: {{ step_val }},
+            move_val: {{ move_val }},
+            attr_name: {{ attr_name }},
+            attr_on: {{ attr_on }}
 
   - choose:
-      - conditions: "{{ command == 'on' }}"
+      # Button 1 / Button 3 (on_off attribute reports)
+      - conditions: "{{ command == 'attribute_updated' and attr_name == 'on_off' and attr_on == 'true' }}"
         sequence: !input button_1_click
-      - conditions: "{{ command == 'off' }}"
+      - conditions: "{{ command == 'attribute_updated' and attr_name == 'on_off' and attr_on == 'false' }}"
         sequence: !input button_3_click
-      - conditions: "{{ command == 'step' }}"
-        sequence:
-          - choose:
-              - conditions: "{{ step_dir == 'up' }}"
-                sequence: !input button_2_click
-              - conditions: "{{ step_dir == 'down' }}"
-                sequence: !input button_4_click
-      - conditions: "{{ command == 'move' }}"
-        sequence:
-          - choose:
-              - conditions: "{{ move_dir == 'up' }}"
-                sequence: !input button_2_long_press
-              - conditions: "{{ move_dir == 'down' }}"
-                sequence: !input button_4_long_press
+      # Button 2 / Button 4 short press
+      - conditions: "{{ command == 'step' and step_val == 0 }}"
+        sequence: !input button_2_click
+      - conditions: "{{ command == 'step' and step_val == 1 }}"
+        sequence: !input button_4_click
+      # Long press
+      - conditions: "{{ command == 'move' and move_val == 0 }}"
+        sequence: !input button_2_long_press
+      - conditions: "{{ command == 'move' and move_val == 1 }}"
+        sequence: !input button_4_long_press
