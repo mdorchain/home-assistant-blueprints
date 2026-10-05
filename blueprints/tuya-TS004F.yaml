@@ -62,12 +62,22 @@ action:
   - variables:
       debug: !input debug
       command: "{{ trigger.event.data.command }}"
-      step_val: "{{ trigger.event.data.params.step_mode | default(-1, true) | int(-1) }}"
-      move_val: "{{ trigger.event.data.params.move_mode | default(-1, true) | int(-1) }}"
-      attr_name: "{{ trigger.event.data.args.attribute_name | default('', true) }}"
+      step_s: "{{ trigger.event.data.params.step_mode | default('') | string }}"
+      move_s: "{{ trigger.event.data.params.move_mode | default('') | string }}"
+      attr_name: "{{ trigger.event.data.args.attribute_name | default('') }}"
+      attr_s: "{{ trigger.event.data.args.value | default('') | string | lower }}"
+      step_dir: >-
+        {{ 'up' if ('Up' in step_s or step_s | trim == '0')
+           else 'down' if ('Down' in step_s or step_s | trim == '1')
+           else '' }}
+      move_dir: >-
+        {{ 'up' if ('Up' in move_s or move_s | trim == '0')
+           else 'down' if ('Down' in move_s or move_s | trim == '1')
+           else '' }}
       attr_on: >-
-        {% set v = trigger.event.data.args.value | default('', true) | string | lower %}
-        {{ 'true' if ('true' in v or v.strip() == '1') else 'false' if ('false' in v or v.strip() == '0') else '' }}
+        {{ 'true' if ('true' in attr_s or attr_s | trim == '1')
+           else 'false' if ('false' in attr_s or attr_s | trim == '0')
+           else '' }}
 
   - if:
       - condition: template
@@ -78,8 +88,8 @@ action:
           title: "Tuya TS004F: {{ command }}"
           message: >-
             command: {{ command }},
-            step_val: {{ step_val }},
-            move_val: {{ move_val }},
+            step_dir: {{ step_dir }},
+            move_dir: {{ move_dir }},
             attr_name: {{ attr_name }},
             attr_on: {{ attr_on }}
 
@@ -90,12 +100,12 @@ action:
       - conditions: "{{ command == 'attribute_updated' and attr_name == 'on_off' and attr_on == 'false' }}"
         sequence: !input button_3_click
       # Button 2 / Button 4 short press
-      - conditions: "{{ command == 'step' and step_val == 0 }}"
+      - conditions: "{{ command == 'step' and step_dir == 'up' }}"
         sequence: !input button_2_click
-      - conditions: "{{ command == 'step' and step_val == 1 }}"
+      - conditions: "{{ command == 'step' and step_dir == 'down' }}"
         sequence: !input button_4_click
       # Long press
-      - conditions: "{{ command == 'move' and move_val == 0 }}"
+      - conditions: "{{ command == 'move' and move_dir == 'up' }}"
         sequence: !input button_2_long_press
-      - conditions: "{{ command == 'move' and move_val == 1 }}"
+      - conditions: "{{ command == 'move' and move_dir == 'down' }}"
         sequence: !input button_4_long_press
