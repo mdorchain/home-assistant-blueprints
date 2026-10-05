@@ -62,9 +62,30 @@ action:
   - variables:
       debug: !input debug
       command: "{{ trigger.event.data.command }}"
-      params: "{{ trigger.event.data.params | default({}, true) }}"
-      step_mode: "{{ params.step_mode | default('') | string }}"
-      move_mode: "{{ params.move_mode | default('') | string }}"
+      args: "{{ trigger.event.data.args }}"
+      params: "{{ trigger.event.data.params }}"
+      step_raw: >-
+        {% if params is mapping and params.get('step_mode') is not none -%}
+          {{ params.get('step_mode') }}
+        {%- elif args is mapping and args.get('step_mode') is not none -%}
+          {{ args.get('step_mode') }}
+        {%- elif args is not mapping and args is not string and args | length > 0 -%}
+          {{ args[0] }}
+        {%- endif %}
+      move_raw: >-
+        {% if params is mapping and params.get('move_mode') is not none -%}
+          {{ params.get('move_mode') }}
+        {%- elif args is mapping and args.get('move_mode') is not none -%}
+          {{ args.get('move_mode') }}
+        {%- elif args is not mapping and args is not string and args | length > 0 -%}
+          {{ args[0] }}
+        {%- endif %}
+      step_dir: >-
+        {% set s = step_raw | string %}
+        {{ 'up' if ('Up' in s or s.strip() == '0') else 'down' if ('Down' in s or s.strip() == '1') else '' }}
+      move_dir: >-
+        {% set s = move_raw | string %}
+        {{ 'up' if ('Up' in s or s.strip() == '0') else 'down' if ('Down' in s or s.strip() == '1') else '' }}
 
   - if:
       - condition: template
@@ -73,7 +94,12 @@ action:
       - service: persistent_notification.create
         data:
           title: "Tuya TS004F: {{ command }}"
-          message: "command: {{ command }}, step_mode: {{ step_mode }}, move_mode: {{ move_mode }}"
+          message: >-
+            command: {{ command }},
+            step_dir: {{ step_dir }},
+            move_dir: {{ move_dir }},
+            args: {{ args }},
+            params: {{ params }}
 
   - choose:
       - conditions: "{{ command == 'on' }}"
@@ -83,14 +109,14 @@ action:
       - conditions: "{{ command == 'step' }}"
         sequence:
           - choose:
-              - conditions: "{{ step_mode in ['StepMode.Up', '0'] }}"
+              - conditions: "{{ step_dir == 'up' }}"
                 sequence: !input button_2_click
-              - conditions: "{{ step_mode in ['StepMode.Down', '1'] }}"
+              - conditions: "{{ step_dir == 'down' }}"
                 sequence: !input button_4_click
       - conditions: "{{ command == 'move' }}"
         sequence:
           - choose:
-              - conditions: "{{ move_mode in ['MoveMode.Up', '0'] }}"
+              - conditions: "{{ move_dir == 'up' }}"
                 sequence: !input button_2_long_press
-              - conditions: "{{ move_mode in ['MoveMode.Down', '1'] }}"
+              - conditions: "{{ move_dir == 'down' }}"
                 sequence: !input button_4_long_press
