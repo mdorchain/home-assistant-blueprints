@@ -1,18 +1,21 @@
 # -------------------------------------------------------------------
-# Blueprint Metadata
-# Version:       1.0.0
-# Last Updated:  2026-07-26
-# Author:        Michael Dorchain & Assistant
-# Source:        https://github.com/mdorchain/home-assistant-blueprints/
+# Blueprint
+# Version:        1.0.1
+# Last Updated:   2026-10-05
+# Author:         Michael Dorchain
+# Source:         https://github.com/mdorchain/home-assistant-blueprints/
 #
 # Changelog:
 #   1.0.0 - initital release
+#   1.0.1 - Compatibility fixes for Home Assistant 2026.10.0
 # -------------------------------------------------------------------
 
 blueprint:
   name: ZHA - Tuya TS004F 4-Button Switch
   description: Automate your Tuya 4-Button Switch using ZHA events.
   domain: automation
+  homeassistant:
+    min_version: 2023.9.0
   input:
     tuya_4button_switch:
       name: Tuya TS004F 4-Button Switch

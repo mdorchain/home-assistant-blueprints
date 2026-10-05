@@ -1,9 +1,9 @@
 # -------------------------------------------------------------------
-# Blueprint Metadata
-# Version:       2.2.0
-# Last Updated:  2026-07-18
-# Author:        Michael Dorchain & Assistant
-# Source:        https://github.com/mdorchain/home-assistant-blueprints/
+# Blueprint
+# Version:        2.2.1
+# Last Updated:   2026-10-05
+# Author:         Michael Dorchain
+# Source:         https://github.com/mdorchain/home-assistant-blueprints/
 #
 # Changelog:
 #   1.12.0 (2026-07-17) - Fixed syntax errors on entity variables and restored dynamic fallback logic
@@ -24,6 +24,7 @@
 #                          'for' timer is tracked by HA's own state engine and only resets
 #                          when the specific state/attribute being watched actually changes -
 #                          fully immune to unrelated attribute noise.
+#   2.2.1  (2026-10-05) - Compatibility fixes for Home Assistant 2026.10.0
 # -------------------------------------------------------------------
 
 blueprint:
@@ -34,6 +35,8 @@ blueprint:
     In "Manual" mode, it always sets the favorite speed to your target (e.g., 14).
     When PM2.5 goes BELOW the manual threshold, it automatically returns the purifier to "Auto" preset mode (only if triggered by the sensor and minimum manual time has elapsed).
   domain: automation
+  homeassistant:
+    min_version: 2023.9.0
   source_url: https://github.com/mdorchain/home-assistant-blueprints/blob/main/blueprints/air-purifier.yaml
 
   input:  
