@@ -72,11 +72,11 @@ trigger:
     device_id: !input 'tuya_4button_switch'
 action:
 - variables:
-    command: '{{ trigger.event.data.command }}'
-    attribute_name: '{{ trigger.event.data.args.attribute_name }}'
-    attribute_value: '{{ trigger.event.data.args.value }}'
-    step_mode: '{{ trigger.event.data.params.step_mode }}'
-    move_mode: '{{ trigger.event.data.params.move_mode }}'
+    command: {{ trigger.event.data.command }}
+    attribute_name: {{ trigger.event.data.args.attribute_name }}
+    attribute_value: {{ trigger.event.data.args.value }}
+    step_mode: {{ trigger.event.data.params.step_mode }}
+    move_mode: {{ trigger.event.data.params.move_mode }}
 - choose:
   - conditions: '{{ true }}'
     sequence:
@@ -94,14 +94,11 @@ action:
   - conditions: '{{ command == ''move'' }}'
     sequence:
     - choose:
-      - conditions: '{{ move_mode == 0 }}'
+      - conditions: '{{ move_mode == ''MoveMode.Up'' }}'
         sequence: !input 'button_2_long_press'
-      - conditions: '{{ move_mode == 1 }}'
+      - conditions: '{{ move_mode == ''MoveMode.Down'' }}'
         sequence: !input 'button_4_long_press'
-  - conditions: '{{ command == ''attribute_updated'' }}'
-    sequence:
-    - choose:
-      - conditions: '{{ attribute_name == ''on_off'' and attribute_value == ''Bool.false'' }}'
-        sequence: !input 'button_3_click'
-      - conditions: '{{ attribute_name == ''on_off'' and attribute_value == ''Bool.true'' }}'
-        sequence: !input 'button_1_click'
+  - conditions: '{{ command == ''on'' }}'
+    sequence: !input 'button_1_click'
+  - conditions: '{{ command == ''off'' }}'
+    sequence: !input 'button_3_click'
