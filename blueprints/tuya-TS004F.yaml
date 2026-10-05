@@ -82,14 +82,14 @@ action:
     sequence:
         - service: notify.persistent_notification
           data:
-            message: 'attribute_name: {{ attribute_name }}, step_mode: {{ step_mode }}'
+            message: 'attribute_name: {{ attribute_name }}, step_mode: {{ step_mode }}, move_mode: {{ move_mode }}, attribute_value: {{ attribute_value }}'
             title: '{{ command }}'
   - conditions: '{{ command == ''step'' }}'
     sequence:
     - choose:
-      - conditions: '{{ step_mode == 0 }}'
+      - conditions: '{{ step_mode == ''StepMode.Up'' }}'
         sequence: !input 'button_2_click'
-      - conditions: '{{ step_mode == 1 }}'
+      - conditions: '{{ step_mode == ''StepMode.Down'' }}'
         sequence: !input 'button_4_click'
   - conditions: '{{ command == ''move'' }}'
     sequence:
