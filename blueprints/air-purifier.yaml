@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------
 # Blueprint
-# Version:        2.2.1
-# Last Updated:   2026-10-05
+# Version:        2.3.0
+# Last Updated:   2026-10-08
 # Author:         Michael Dorchain
 # Source:         https://github.com/mdorchain/home-assistant-blueprints/
 #
@@ -25,21 +25,27 @@
 #                          when the specific state/attribute being watched actually changes -
 #                          fully immune to unrelated attribute noise.
 #   2.2.1  (2026-10-05) - Compatibility fixes for Home Assistant 2026.10.0
+#   2.3.0  (2026-10-08) - Replaced the attribute-based `for:` state condition (no longer allowed
+#                          in HA 2026.10) with a template trigger (manual_clear) that fires once
+#                          "Manual + PM2.5 below fallback threshold" has held for the minimum
+#                          duration. Added a startup/reload trigger so the fan can't stay stuck
+#                          in Manual after a restart or reload.
 # -------------------------------------------------------------------
 
 blueprint:
   name: 🌫️ Xiaomi Air Purifier Control
   description: >
-    Controls a Xiaomi fan based on PM2.5 levels. 
+    Controls a Xiaomi fan based on PM2.5 levels.
     In "Auto" mode, it uses the Auto PM2.5 thresholds to turn the fan ON/OFF.
     In "Manual" mode, it always sets the favorite speed to your target (e.g., 14).
-    When PM2.5 goes BELOW the manual threshold, it automatically returns the purifier to "Auto" preset mode (only if triggered by the sensor and minimum manual time has elapsed).
+    When PM2.5 stays BELOW the manual threshold for the minimum manual duration, it automatically returns the purifier to "Auto" preset mode.
+    After a Home Assistant restart or automation reload, if the fan is in Manual and PM2.5 is already below the threshold, it returns to Auto immediately.
   domain: automation
   homeassistant:
     min_version: 2023.9.0
   source_url: https://github.com/mdorchain/home-assistant-blueprints/blob/main/blueprints/air-purifier.yaml
 
-  input:  
+  input:
     input_air_purifier:
       name: Air Purifier Fan
       selector:
@@ -80,7 +86,7 @@ blueprint:
           max: 100
           unit_of_measurement: µg/m³
           mode: slider
-          
+
     input_auto_min_duration:
       name: Automatic Mode - Minimum ON Duration
       description: The minimum time the fan must stay ON before it's allowed to automatically turn OFF.
@@ -111,7 +117,7 @@ blueprint:
 
     input_manual_min_duration:
       name: Manual Mode - Minimum Duration
-      description: The minimum time the fan must remain in Manual mode before being allowed to roll back to Auto.
+      description: How long PM2.5 must stay below the fallback threshold (while in Manual) before the fan rolls back to Auto.
       default: "00:30:00"
       selector:
         duration:
@@ -125,6 +131,13 @@ variables:
   manual_speed: !input input_manual_speed
   speed_level_entity: !input input_speed_level_entity
 
+# Template triggers can't see the regular `variables:` block, so the values
+# they need are exposed here (resolved at load time from blueprint inputs).
+trigger_variables:
+  tv_fan: !input input_air_purifier
+  tv_pm25: !input input_pm25_sensor
+  tv_manual_threshold: !input input_manual_threshold
+
 trigger:
   # Trigger 1: PM2.5 sensor reports a new value
   - platform: state
@@ -136,6 +149,25 @@ trigger:
     entity_id: !input input_air_purifier
     attribute: preset_mode
     id: preset_changed
+
+  # Trigger 3: In Manual with PM2.5 below the fallback threshold, held for the minimum duration
+  - platform: template
+    id: manual_clear
+    value_template: >
+      {{ is_state_attr(tv_fan, 'preset_mode', 'Manual') and
+         states(tv_pm25) | is_number and
+         states(tv_pm25) | float < tv_manual_threshold | float }}
+    for: !input input_manual_min_duration
+
+  # Trigger 4 + 5: HA start or automation reload -> re-check once, since the template
+  # trigger above can't fire if its condition is already true when the automation loads
+  - platform: homeassistant
+    event: start
+    id: startup
+
+  - platform: event
+    event_type: automation_reloaded
+    id: startup
 
 action:
   - choose:
@@ -179,23 +211,23 @@ action:
             data:
               value: "{{ manual_speed }}"
 
-      # 3) In Manual, PM2.5 has dropped back below the manual threshold, and preset_mode has
-      #    held at Manual continuously for at least manual_min_duration -> fall back to Auto.
-      #    (Gated on trigger.id == 'pm25_changed' so this doesn't fire off of our own
-      #    fan.set_preset_mode / number.set_value calls above. The 'for' condition on the
-      #    preset_mode attribute is tracked natively by HA's state engine - it only resets
-      #    when preset_mode itself changes, so it's immune to unrelated attribute noise.)
+      # 3) Manual, PM2.5 below the fallback threshold for the whole minimum duration -> back to Auto
+      #    (or, after a start/reload, Manual with PM2.5 already below the threshold; the minimum
+      #    duration is skipped in that case because HA has no record of how long Manual lasted)
       - conditions:
-          - condition: template
-            value_template: >
-              {{ trigger.id == 'pm25_changed' and
-                 states(pm25_sensor) | is_number and
-                 states(pm25_sensor) | float < manual_threshold | float }}
-          - condition: state
-            entity_id: !input input_air_purifier
-            attribute: preset_mode
-            state: "Manual"
-            for: !input input_manual_min_duration
+          - condition: or
+            conditions:
+              - condition: trigger
+                id: manual_clear
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: startup
+                  - condition: template
+                    value_template: >
+                      {{ state_attr(air_purifier_entity, 'preset_mode') == 'Manual' and
+                         states(pm25_sensor) | is_number and
+                         states(pm25_sensor) | float < manual_threshold | float }}
         sequence:
           - service: fan.set_preset_mode
             target:
@@ -217,6 +249,7 @@ action:
 
       # 5) In Auto, PM2.5 below the OFF threshold, and the fan has held state 'on'
       #    continuously for at least auto_min_duration -> turn off.
+      #    (`for:` is on the main state here, not an attribute, so it is still allowed in HA 2026.10)
       - conditions:
           - condition: template
             value_template: >
