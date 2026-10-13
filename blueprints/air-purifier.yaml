@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------
 # Blueprint
-# Version:        2.3.0
-# Last Updated:   2026-10-08
+# Version:        2.4.0
+# Last Updated:   2026-10-13
 # Author:         Michael Dorchain
 # Source:         https://github.com/mdorchain/home-assistant-blueprints/
 #
@@ -30,6 +30,12 @@
 #                          "Manual + PM2.5 below fallback threshold" has held for the minimum
 #                          duration. Added a startup/reload trigger so the fan can't stay stuck
 #                          in Manual after a restart or reload.
+#   2.4.0  (2026-10-13) - Manual entry (branch 1) now also fires when the preset is already
+#                          Manual but the fan is off or the speed differs from the target, so
+#                          crossing the Manual threshold always (re)applies the Manual settings.
+#                          Changed `mode: single` to `mode: queued` (max 5, silent overflow) so
+#                          triggers arriving mid-run are no longer silently dropped and the
+#                          manual_clear run is never cancelled.
 # -------------------------------------------------------------------
 
 blueprint:
@@ -38,6 +44,7 @@ blueprint:
     Controls a Xiaomi fan based on PM2.5 levels.
     In "Auto" mode, it uses the Auto PM2.5 thresholds to turn the fan ON/OFF.
     In "Manual" mode, it always sets the favorite speed to your target (e.g., 14).
+    Whenever PM2.5 reaches the manual threshold, it makes sure the fan is on, in "Manual" preset and at the target speed, even if the preset was already Manual.
     When PM2.5 stays BELOW the manual threshold for the minimum manual duration, it automatically returns the purifier to "Auto" preset mode.
     After a Home Assistant restart or automation reload, if the fan is in Manual and PM2.5 is already below the threshold, it returns to Auto immediately.
   domain: automation
@@ -171,14 +178,17 @@ trigger:
 
 action:
   - choose:
-      # 1) PM2.5 at/above the manual threshold and we're not already in Manual
+      # 1) PM2.5 at/above the manual threshold and Manual isn't fully applied yet
+      #    (preset not Manual, OR fan off, OR speed differs from target)
       #    -> turn on, switch to Manual, set the target speed
       - conditions:
           - condition: template
             value_template: >
               {{ states(pm25_sensor) | is_number and
                  states(pm25_sensor) | float >= manual_threshold | float and
-                 state_attr(air_purifier_entity, 'preset_mode') != 'Manual' }}
+                 ( state_attr(air_purifier_entity, 'preset_mode') != 'Manual'
+                   or not is_state(air_purifier_entity, 'on')
+                   or states(speed_level_entity) | float(0) != manual_speed | float ) }}
         sequence:
           - service: fan.turn_on
             target:
@@ -265,4 +275,8 @@ action:
             target:
               entity_id: "{{ air_purifier_entity }}"
 
-mode: single
+# Queued so triggers arriving mid-run are not silently dropped (as with `single`),
+# and a manual_clear run is never cancelled (as with `restart`). All actions are idempotent.
+mode: queued
+max: 5
+max_exceeded: silent
