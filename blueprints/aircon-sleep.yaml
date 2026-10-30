@@ -1,6 +1,5 @@
 
 blueprint:
-  min_version: "2024.10.0"  
   name: Air Conditioner Sleep Sequence
   description: >
     Starts an air conditioning sequence when the Good Night script runs.
@@ -84,8 +83,6 @@ blueprint:
       selector:
         duration:
           enable_day: false
-          enable_hour: true
-          enable_minute: true
           enable_second: false
 
     eco_duration:
@@ -98,24 +95,19 @@ blueprint:
       selector:
         duration:
           enable_day: false
-          enable_hour: true
-          enable_minute: true
           enable_second: false
 
 mode: restart
 
 triggers:
-  # User-configured start triggers
   - triggers: !input manual_triggers
 
-  # Internal sequence timer
   - trigger: event
     event_type: timer.finished
     event_data:
       entity_id: !input sequence_timer
     id: timer_up
 
-  # Manual thermostat shutdown
   - trigger: state
     entity_id: !input thermostat
     to: "off"
