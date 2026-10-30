@@ -1,0 +1,217 @@
+
+blueprint:
+  min_version: "2024.10.0"  
+  name: Air Conditioner Sleep Sequence
+  description: >
+    Starts an air conditioning sequence when the Good Night script runs.
+    Cools using the Activity preset for a configurable minimum duration,
+    switches to Eco for a configurable duration, then turns off.
+    Manual shutdown cancels the sequence and resets the phase helper.
+  domain: automation
+
+  input:
+    manual_triggers:
+      name: Manual start triggers
+      description: >
+        Select one or more triggers to start the air conditioning sequence.
+        Examples include a button press, entity state change or script execution.
+      selector:
+        trigger:
+
+    thermostat:
+      name: Thermostat
+      description: Generic Thermostat controlling the air conditioner.
+      selector:
+        entity:
+          filter:
+            - domain: climate
+
+    sequence_helper:
+      name: Sequence phase helper
+      description: Input Select with Cooling, Eco and Off options.
+      selector:
+        entity:
+          filter:
+            - domain: input_select
+
+    sequence_timer:
+      name: Sequence timer
+      description: Timer helper used to manage phase durations.
+      selector:
+        entity:
+          filter:
+            - domain: timer
+
+    activity_preset:
+      name: Activity preset
+      description: Preset used during initial cooldown.
+      default: activity
+      selector:
+        text:
+
+    eco_preset:
+      name: Eco preset
+      description: Energy-saving preset.
+      default: eco
+      selector:
+        text:
+
+    cooling_phase:
+      name: Cooling phase label
+      default: Cooling
+      selector:
+        text:
+
+    eco_phase:
+      name: Eco phase label
+      default: Eco
+      selector:
+        text:
+
+    off_phase:
+      name: Off phase label
+      default: "Off"
+      selector:
+        text:
+
+    cooldown_duration:
+      name: Initial cooldown duration
+      description: Minimum time in Activity mode.
+      default:
+        hours: 1
+        minutes: 0
+        seconds: 0
+      selector:
+        duration:
+          enable_day: false
+          enable_hour: true
+          enable_minute: true
+          enable_second: false
+
+    eco_duration:
+      name: Eco duration
+      description: Time in Eco mode before shutdown.
+      default:
+        hours: 4
+        minutes: 0
+        seconds: 0
+      selector:
+        duration:
+          enable_day: false
+          enable_hour: true
+          enable_minute: true
+          enable_second: false
+
+mode: restart
+
+triggers:
+  # User-configured start triggers
+  - triggers: !input manual_triggers
+
+  # Internal sequence timer
+  - trigger: event
+    event_type: timer.finished
+    event_data:
+      entity_id: !input sequence_timer
+    id: timer_up
+
+  # Manual thermostat shutdown
+  - trigger: state
+    entity_id: !input thermostat
+    to: "off"
+    for: "00:00:30"
+    id: thermostat_off
+
+actions:
+  - choose:
+
+      # Initial cooldown
+      - alias: Initial cooldown - Activity
+        conditions:
+          - condition: template
+            value_template: >
+              {{ trigger.id not in ['timer_up', 'thermostat_off'] }}
+        sequence:
+          - action: timer.cancel
+            target:
+              entity_id: !input sequence_timer
+
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: !input thermostat
+            data:
+              hvac_mode: cool
+
+          - action: climate.set_preset_mode
+            target:
+              entity_id: !input thermostat
+            data:
+              preset_mode: !input activity_preset
+
+          - action: input_select.select_option
+            target:
+              entity_id: !input sequence_helper
+            data:
+              option: !input cooling_phase
+
+          - action: timer.start
+            target:
+              entity_id: !input sequence_timer
+            data:
+              duration: !input cooldown_duration
+
+      # Switch to Eco
+      - alias: Energy saving - Eco
+        conditions:
+          - condition: trigger
+            id: timer_up
+          - condition: state
+            entity_id: !input sequence_helper
+            state: !input cooling_phase
+        sequence:
+          - action: climate.set_preset_mode
+            target:
+              entity_id: !input thermostat
+            data:
+              preset_mode: !input eco_preset
+
+          - action: input_select.select_option
+            target:
+              entity_id: !input sequence_helper
+            data:
+              option: !input eco_phase
+
+          - action: timer.start
+            target:
+              entity_id: !input sequence_timer
+            data:
+              duration: !input eco_duration
+
+      # End sequence
+      - alias: End sequence - Turn off
+        conditions:
+          - condition: trigger
+            id: timer_up
+          - condition: state
+            entity_id: !input sequence_helper
+            state: !input eco_phase
+        sequence:
+          - action: climate.turn_off
+            target:
+              entity_id: !input thermostat
+
+      # Manual shutdown cleanup
+      - alias: Thermostat off - Cleanup
+        conditions:
+          - condition: trigger
+            id: thermostat_off
+        sequence:
+          - action: timer.cancel
+            target:
+              entity_id: !input sequence_timer
+
+          - action: input_select.select_option
+            target:
+              entity_id: !input sequence_helper
+            data:
+              option: !input off_phase
