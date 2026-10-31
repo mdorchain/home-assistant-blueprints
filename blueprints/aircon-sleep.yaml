@@ -73,6 +73,13 @@ blueprint:
       selector:
         text:
 
+    final_preset:
+      name: Final preset
+      description: Preset to apply when the sequence completes.
+      default: Eco
+      selector:
+        text:
+
     cooldown_duration:
       name: Initial cooldown duration
       description: Minimum time in Activity mode.
@@ -191,6 +198,11 @@ actions:
           - action: climate.turn_off
             target:
               entity_id: !input thermostat
+          - action: climate.set_preset_mode
+            target:
+              entity_id: !input thermostat
+            data:
+              preset_mode: !input final_preset
 
       # Manual shutdown cleanup
       - alias: Thermostat off - Cleanup
@@ -201,7 +213,6 @@ actions:
           - action: timer.cancel
             target:
               entity_id: !input sequence_timer
-
           - action: input_select.select_option
             target:
               entity_id: !input sequence_helper
